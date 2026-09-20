@@ -17,10 +17,18 @@ A local-first FastAPI application for understanding public GitHub repositories t
 2. Create and activate a virtual environment.
 3. Install dependencies: `python -m pip install -r requirements.txt`
 4. Copy `.env.example` to `.env` and configure at least one AI provider key.
-5. Start the app: `python run.`
+5. Start the app: `python run.py`
 6. Open http://127.0.0.1:8000.
 
 A GitHub token is optional for public repositories, but useful for higher API limits. Keys are backend-only and never sent to the browser.
+
+## Advanced analysis
+
+Alongside the standard repository report, the analyzer can answer one specific question about a repository. Enable **Advanced analysis**, choose a repository type, and ask a question such as *"Where is authentication implemented?"*.
+
+Focused runs add two stages: candidate files are ranked against the concepts in your question, then the model must answer using only that evidence. Every citation is re-opened afterwards, the real excerpt and line range are extracted from the file that exists on disk, and citations that cannot be verified are discarded. Answers are labelled `implemented`, `partial`, `referenced_only`, `not_found`, or `uncertain`, and rated `strong`, `moderate`, `weak`, or `insufficient`.
+
+Applying the selected repository type requires a question; the type only guides ranking and interpretation.
 
 ## Architecture
 
@@ -33,14 +41,16 @@ Providers are attempted in this order: Gemini, Groq, OpenRouter, Hugging Face. U
 ## Security model
 
 Repositories are untrusted data. The application never runs source code, package managers, Makefiles, Dockerfiles, workflows, or setup scripts. Archive members are resolved under a deterministic workspace and rejected if they escape it. Files are bounded and filtered before selected source context is transmitted to an AI provider. Repository text is explicitly framed as evidence, not instructions, to reduce prompt injection risk.
-py
+
 ## Packaging
 
 The application has no Node.js, Git, Docker, database server, or system package-manager runtime requirement. A Windows launcher can run `python run.py`; standalone executables can be produced with PyInstaller using the included `packaging.spec` after installing `pyinstaller` in a build environment.
 
 ## Tests
 
-Run `python -m pytest -q`. The tests cover URL parsing, traversal protection, archive extraction, importance ranking, deterministic workspaces, and SQLite persistence. Live provider and GitHub calls are intentionally not part of the unit suite.
+Run `python -m pytest tests -q`. The tests cover URL parsing, traversal protection, archive extraction, importance ranking, deterministic workspaces, focused-analysis evidence enrichment, and SQLite persistence. Live provider and GitHub calls are intentionally not part of the unit suite.
+
+Pass the `tests` path explicitly: a bare `python -m pytest -q` also collects example projects under `db/workspaces/`, which are downloaded repositories and not part of the test suite.
 
 ## Limitations and future work
 

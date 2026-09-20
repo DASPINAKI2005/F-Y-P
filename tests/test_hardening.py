@@ -70,7 +70,7 @@ def test_corrupt_history_result_isolated(tmp_path, monkeypatch):
 
 
 def test_frontend_uses_safe_dom_apis():
-    source = Path("frontend/app.js").read_text(encoding="utf-8")
+    source = Path("frontend/index.html").read_text(encoding="utf-8")
     assert "innerHTML" not in source
     assert "insertAdjacentHTML" not in source
     assert "textContent" in source

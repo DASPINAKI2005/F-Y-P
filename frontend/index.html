@@ -1,14 +1,1029 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#16140f">
-<meta name="description" content="Local-first AI analysis for public GitHub repositories: architecture, technology stack, security findings, and recommendations.">
-<title>GitHub Repo Analyzer</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-<script src="/static/app.js"></script>
-</body>
+﻿<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="GitHub Repo Analyzer for evidence-based repository intelligence." />
+    <title>GitHub Repo Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #081118;
+        --bg-elevated: #0d1721;
+        --surface: #101b28;
+        --surface-soft: #132332;
+        --surface-strong: #1a2d3d;
+        --border: rgba(148, 163, 184, 0.18);
+        --border-strong: rgba(125, 211, 252, 0.32);
+        --text: #e6eef7;
+        --text-soft: #a8bac7;
+        --text-faint: #7e8ea1;
+        --primary: #7dd3fc;
+        --primary-strong: #3ddcff;
+        --secondary: #a78bfa;
+        --success: #6ee7b7;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --shadow: 0 20px 36px rgba(2, 6, 23, 0.38);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top, rgba(61, 220, 255, 0.12), transparent 28%),
+          linear-gradient(180deg, #081118 0%, #0c141b 100%);
+        color: var(--text);
+        font-family: 'Inter', system-ui, sans-serif;
+        line-height: 1.5;
+      }
+      a { color: inherit; text-decoration: none; }
+      button, input, textarea, select { font: inherit; }
+      button { cursor: pointer; }
+      img { display: block; max-width: 100%; }
+      .sr-only {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+      }
+      .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+      .topbar {
+        position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        min-height: 72px; padding: 14px clamp(16px, 3vw, 32px); background: rgba(8, 17, 24, 0.82); backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--border);
+      }
+      .brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+      .brand-logo { width: 110px; height: 26px; object-fit: contain; }
+      .desktop-nav { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-width: 0; }
+      .nav-item {
+        border: 1px solid transparent; background: transparent; color: var(--text-soft); border-radius: 12px; padding: 9px 12px; font-size: 0.92rem;
+        font-weight: 600; white-space: nowrap; transition: all 0.18s ease;
+      }
+      .nav-item:hover, .nav-item:focus-visible { color: var(--text); background: rgba(148, 163, 184, 0.05); border-color: var(--border); outline: none; }
+      .nav-item.active { color: var(--text); background: rgba(125, 211, 252, 0.08); border-color: rgba(125, 211, 252, 0.26); }
+      .header-actions { display: flex; align-items: center; gap: 8px; }
+      .ghost-button, .primary-button, .secondary-button, .danger-button, .chip-button, .icon-button, .menu-button {
+        border: 1px solid transparent; border-radius: 12px; padding: 10px 14px; transition: all 0.18s ease;
+      }
+      .ghost-button, .menu-button { background: rgba(148, 163, 184, 0.05); border-color: var(--border); color: var(--text); }
+      .primary-button { background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(167, 139, 250, 0.14)); border-color: rgba(125, 211, 252, 0.28); color: var(--text); }
+      .secondary-button { background: rgba(167, 139, 250, 0.08); border-color: rgba(167, 139, 250, 0.26); color: #ddd6fe; }
+      .danger-button { background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.22); color: #fecaca; }
+      .ghost-button:hover, .primary-button:hover, .secondary-button:hover, .danger-button:hover, .chip-button:hover, .icon-button:hover, .menu-button:hover { transform: translateY(-1px); }
+      .topbar .menu-button { display: none; }
+      .mobile-menu { position: fixed; inset: 72px 0 auto 0; z-index: 30; background: rgba(7, 12, 17, 0.97); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); padding: 16px; transform: translateY(-8px); opacity: 0; pointer-events: none; transition: all 0.2s ease; }
+      .mobile-menu.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+      .mobile-menu nav { display: flex; flex-direction: column; gap: 8px; }
+      .mobile-menu .nav-item { width: 100%; text-align: left; }
+      main { width: min(1200px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 72px; flex: 1; }
+      .view { display: none; }
+      .view.active { display: block; }
+      .panel, .card {
+        background: rgba(16, 27, 40, 0.88); border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow);
+      }
+      .hero { padding: clamp(20px, 4vw, 34px); }
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border-strong);
+        background: rgba(125, 211, 252, 0.04); color: var(--text-soft); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 18px;
+      }
+      .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px rgba(110, 231, 183, 0.7); }
+      h1, h2, h3, h4 { margin: 0; font-family: 'Space Grotesk', 'Segoe UI', sans-serif; letter-spacing: -0.05em; }
+      h1 { font-size: clamp(2.3rem, 6vw, 4rem); line-height: 1.05; max-width: 760px; }
+      .accent { color: var(--primary); }
+      .hero-copy { max-width: 720px; margin-top: 16px; color: var(--text-soft); font-size: clamp(1rem, 2vw, 1.18rem); }
+      .repo-form {
+        margin-top: clamp(24px, 4vw, 34px); padding: 18px; border-radius: 20px; background: rgba(8, 17, 24, 0.75); border: 1px solid rgba(125, 211, 252, 0.2);
+      }
+      .field-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .field-label { color: var(--text-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
+      .preset-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .preset-link {
+        display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid transparent;
+        background: rgba(125, 211, 252, 0.06); color: var(--primary); font-size: 0.78rem; font-weight: 600;
+      }
+      .repo-input-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+      .input-shell { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 60px; border-radius: 14px; border: 1px solid var(--border); background: rgba(5, 12, 18, 0.86); padding: 0 12px 0 14px; }
+      .input-shell:focus-within { border-color: rgba(125, 211, 252, 0.4); box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.08); }
+      .repo-input { width: 100%; min-width: 0; border: none; background: transparent; color: var(--text); padding: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: clamp(0.88rem, 2vw, 1rem); outline: none; }
+      .repo-input::placeholder { color: var(--text-faint); }
+      .clear-button { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: transparent; border: 1px solid transparent; color: var(--text-faint); }
+      .primary-button, .secondary-button, .danger-button, .ghost-button, .chip-button, .icon-button, .menu-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; font-weight: 700; }
+      .primary-button { min-width: 188px; padding-inline: 20px; }
+      .status-line { min-height: 24px; font-size: 0.9rem; color: var(--text-soft); margin-top: 12px; }
+      .status-line.success { color: var(--success); }
+      .status-line.error { color: var(--danger); }
+      .status-line.info { color: var(--primary); }
+      .trust-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+      .trust-item {
+        display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(148, 163, 184, 0.03); color: var(--text-soft); font-size: 0.8rem;
+      }
+      .trust-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px rgba(110, 231, 183, 0.75); flex-shrink: 0; }
+      .section-grid { display: grid; gap: 20px; margin-top: 24px; }
+      .two-col { grid-template-columns: 1.3fr 0.7fr; }
+      .card { padding: 22px; }
+      .card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+      .card-title { font-size: clamp(1.2rem, 2vw, 1.7rem); }
+      .stack { display: grid; gap: 16px; }
+      .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: rgba(148, 163, 184, 0.02); }
+      .toggle-button { position: relative; width: 52px; height: 30px; border-radius: 999px; border: 1px solid rgba(125, 211, 252, 0.3); background: rgba(125, 211, 252, 0.08); padding: 0; }
+      .toggle-button::after { content: ''; position: absolute; top: 3px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--text); transition: transform 0.2s ease; }
+      .toggle-button[aria-checked='true'] { background: rgba(110, 231, 183, 0.16); }
+      .toggle-button[aria-checked='true']::after { transform: translateX(22px); background: var(--success); }
+      .field { display: grid; gap: 10px; }
+      .chip-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+      .chip-button { background: rgba(16, 27, 40, 0.76); border-color: var(--border); color: var(--text-soft); min-height: 40px; padding-inline: 14px; }
+      .chip-button.active { background: rgba(125, 211, 252, 0.12); border-color: rgba(125, 211, 252, 0.32); color: var(--text); }
+      .text-input, .textarea, .select { width: 100%; border: 1px solid var(--border); border-radius: 12px; background: rgba(5, 12, 18, 0.86); color: var(--text); padding: 12px 14px; }
+      .textarea { resize: vertical; min-height: 90px; }
+      .text-input:focus, .textarea:focus, .select:focus { border-color: rgba(125, 211, 252, 0.42); box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.08); outline: none; }
+      .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+      .metric { border: 1px solid var(--border); border-radius: 14px; background: rgba(148, 163, 184, 0.025); padding: 16px; }
+      .metric-label { display: block; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
+      .metric-value { font-family: 'Space Grotesk', 'Segoe UI', sans-serif; font-size: clamp(1.2rem, 2vw, 1.7rem); font-weight: 700; }
+      .progress-shell { display: grid; gap: 18px; }
+      .progress-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+      .status-badge {
+        display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; background: rgba(125, 211, 252, 0.07); border: 1px solid rgba(125, 211, 252, 0.2); padding: 8px 12px; color: var(--primary); font-weight: 700; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+      }
+      .status-badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+      .progress-bar { height: 12px; border-radius: 999px; border: 1px solid rgba(148,163,184,0.12); background: rgba(148,163,184,0.08); overflow: hidden; }
+      .progress-fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.25s ease; }
+      .pipeline-list { display: grid; gap: 10px; }
+      .pipeline-item { display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(148, 163, 184, 0.02); }
+      .pipeline-item.active { border-color: rgba(125, 211, 252, 0.35); background: rgba(125, 211, 252, 0.08); }
+      .pipeline-item.complete { border-color: rgba(110, 231, 183, 0.35); background: rgba(110, 231, 183, 0.06); }
+      .pipeline-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(148, 163, 184, 0.5); }
+      .pipeline-item.complete .pipeline-dot { background: var(--success); }
+      .pipeline-item.active .pipeline-dot { background: var(--primary); box-shadow: 0 0 10px rgba(125, 211, 252, 0.7); }
+      .pipeline-meta { color: var(--text-faint); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+      .report-hero { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+      .report-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .report-sections { display: grid; gap: 18px; }
+      .report-section { border: 1px solid var(--border); border-radius: 18px; background: rgba(148,163,184,0.02); padding: 18px; }
+      .report-section h3 { font-size: 1.08rem; margin-bottom: 12px; }
+      .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+      .tag { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--border); background: rgba(148, 163, 184, 0.04); padding: 6px 10px; color: var(--text-soft); font-size: 0.78rem; }
+      .muted { color: var(--text-soft); }
+      .list { display: grid; gap: 12px; }
+      .list-item { border: 1px solid var(--border); border-radius: 12px; background: rgba(148,163,184,0.02); padding: 14px 16px; }
+      .history-grid { display: grid; gap: 12px; }
+      .history-item { padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: rgba(148,163,184,0.02); }
+      .history-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .history-title { font-weight: 700; }
+      .history-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .empty-state { padding: 26px 18px; border: 1px dashed var(--border); border-radius: 14px; text-align: center; color: var(--text-soft); }
+      .settings-list { display: grid; gap: 12px; }
+      .settings-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: rgba(148,163,184,0.02); }
+      .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+      .info-box { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: rgba(148,163,184,0.02); }
+      .info-box h4 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
+      footer { border-top: 1px solid var(--border); margin-top: auto; background: rgba(8,17,24,0.7); }
+      .footer-inner { width: min(1200px, calc(100% - 32px)); margin: 0 auto; padding: 18px 0 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--text-soft); }
+      .toast-stack { position: fixed; right: 16px; bottom: 16px; z-index: 60; width: min(360px, calc(100vw - 32px)); display: grid; gap: 10px; }
+      .toast {
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: rgba(8,17,24,0.96); box-shadow: var(--shadow);
+      }
+      .toast.success { border-color: rgba(110,231,183,0.35); }
+      .toast.error { border-color: rgba(248,113,113,0.35); }
+      .toast.info { border-color: rgba(125,211,252,0.35); }
+      .toast-title { display: block; font-weight: 700; margin-bottom: 3px; }
+      .toast-close { background: transparent; border: none; color: var(--text-soft); font-size: 1.1rem; }
+      .button-disabled { opacity: 0.6; pointer-events: none; }
+      .visually-hidden { position: absolute !important; clip: rect(1px,1px,1px,1px); height: 1px; width: 1px; overflow: hidden; white-space: nowrap; }
+      @media (max-width: 900px) { .desktop-nav { display: none; } .topbar .menu-button { display: inline-flex; } .two-col { grid-template-columns: 1fr; } }
+      @media (max-width: 640px) {
+        main { width: min(1200px, calc(100% - 20px)); padding-top: 18px; }
+        .topbar { padding-inline: 12px; }
+        .brand-logo { width: 100px; height: 24px; }
+        .repo-input-row { flex-direction: column; align-items: stretch; }
+        .primary-button { width: 100%; }
+        .trust-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .card, .hero { padding: 16px; }
+      }
+      @media (max-width: 380px) { .trust-row { grid-template-columns: 1fr; } }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" aria-label="Site header">
+        <div class="brand" aria-label="GitHub Repo Analyzer home">
+          <img class="brand-logo" src="assets/logo.svg" alt="GitHub Repo Analyzer logo" />
+        </div>
+
+        <nav class="desktop-nav" aria-label="Primary navigation">
+          <button class="nav-item active" type="button" data-view="analyze">Analyze</button>
+          <button class="nav-item" type="button" data-view="history">History</button>
+          <button class="nav-item" type="button" data-view="security">Security &amp; Trust</button>
+          <button class="nav-item" type="button" data-view="settings">Settings</button>
+        </nav>
+
+        <div class="header-actions">
+          <a class="ghost-button" href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
+          <button class="menu-button" id="menuToggle" type="button" aria-expanded="false" aria-controls="mobileMenu" aria-label="Toggle navigation menu">Menu</button>
+        </div>
+      </header>
+
+      <div class="mobile-menu" id="mobileMenu" aria-label="Mobile menu">
+        <nav>
+          <button class="nav-item active" type="button" data-view="analyze">Analyze</button>
+          <button class="nav-item" type="button" data-view="history">History</button>
+          <button class="nav-item" type="button" data-view="security">Security &amp; Trust</button>
+          <button class="nav-item" type="button" data-view="settings">Settings</button>
+          <a class="nav-item" href="https://github.com" target="_blank" rel="noreferrer">GitHub Repository</a>
+        </nav>
+      </div>
+
+      <main>
+        <section class="view active" data-view-section="analyze">
+          <div class="hero panel">
+            <div class="eyebrow"><span class="dot" aria-hidden="true"></span> Deterministic repository intelligence</div>
+            <h1>Understand any <span class="accent">GitHub repository</span>.</h1>
+            <p class="hero-copy">Analyze public repositories using evidence-based static scanning, technology detection, and focused AI review without executing repository code.</p>
+
+            <div class="repo-form">
+              <div class="field-header">
+                <label class="field-label" for="repoInput">Repository URL</label>
+                <div class="preset-group" aria-label="Quick repository presets">
+                  <span class="muted">Presets</span>
+                  <button class="preset-link" type="button" data-preset="facebook/react">facebook/react</button>
+                  <button class="preset-link" type="button" data-preset="fastapi/fastapi">fastapi/fastapi</button>
+                </div>
+              </div>
+
+              <div class="repo-input-row">
+                <div class="input-shell">
+                  <span aria-hidden="true">↳</span>
+                  <input id="repoInput" class="repo-input" type="text" value="fastapi/fastapi" spellcheck="false" autocomplete="off" aria-label="Repository URL or owner/repository" placeholder="https://github.com/owner/repository" />
+                  <button class="clear-button" id="clearRepoInput" type="button" aria-label="Clear repository input">✕</button>
+                </div>
+                <button class="primary-button" id="analyzeButton" type="button">Analyze Repository</button>
+              </div>
+
+              <div id="validationStatus" class="status-line info" aria-live="polite">Ready to analyze.</div>
+
+              <div class="trust-row" aria-label="Trust and safety highlights">
+                <div class="trust-item"><span class="dot" aria-hidden="true"></span><span>No code execution</span></div>
+                <div class="trust-item"><span class="dot" aria-hidden="true"></span><span>Static analysis</span></div>
+                <div class="trust-item"><span class="dot" aria-hidden="true"></span><span>Evidence-backed</span></div>
+                <div class="trust-item"><span class="dot" aria-hidden="true"></span><span>AI fallback</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-grid two-col">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Focused repository analysis</h2>
+              </div>
+
+              <div class="stack">
+                <div class="toggle-row">
+                  <span class="muted">Focused analysis</span>
+                  <button id="focusedToggle" class="toggle-button" type="button" role="switch" aria-checked="false" aria-label="Enable focused analysis"></button>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="archetypeGrid">Repository type</label>
+                  <div class="chip-grid" id="archetypeGrid" aria-label="Repository archetype selector"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="questionInput">Question</label>
+                  <textarea id="questionInput" class="textarea" placeholder="Where is authentication implemented, and which middleware enforces access checks?" aria-label="Focused analysis question" disabled></textarea>
+                </div>
+
+                <div class="field">
+                  <label class="field-label">Evidence scope</label>
+                  <div class="chip-grid" id="scopeGrid" aria-label="Evidence scope selector">
+                    <button class="chip-button active" type="button" data-scope="targeted" aria-pressed="true">Targeted</button>
+                    <button class="chip-button" type="button" data-scope="deep" aria-pressed="false">Deep Scan</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Status</h2>
+              </div>
+              <div class="metrics">
+                <div class="metric">
+                  <span class="metric-label">Current view</span>
+                  <span class="metric-value" id="viewStatus">Analyze</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Last update</span>
+                  <span class="metric-value" id="lastUpdatedStatus">Idle</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Analysis mode</span>
+                  <span class="metric-value" id="analysisModeStatus">Standard</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Repo status</span>
+                  <span class="metric-value" id="repoStatusValue">Ready</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-view-section="progress">
+          <div class="card">
+            <div class="progress-shell">
+              <div class="progress-header">
+                <div>
+                  <div class="field-label">Analysis pipeline</div>
+                  <h2 class="card-title" id="progressTitle">Queued</h2>
+                </div>
+                <div class="status-badge" id="progressBadge">Queued</div>
+              </div>
+
+              <div class="progress-bar" aria-label="Analysis progress">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+
+              <div class="pipeline-list" id="pipelineList"></div>
+
+              <div class="report-actions">
+                <button class="secondary-button" type="button" id="returnToAnalyze">Back to analyze</button>
+                <button class="danger-button" type="button" id="cancelAnalysisButton" hidden>Abort analysis</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-view-section="report">
+          <div class="report-hero">
+            <div>
+              <div class="field-label">Repository report</div>
+              <h2 class="card-title" id="reportTitle">Repository report</h2>
+            </div>
+            <div class="report-actions">
+              <button class="secondary-button" type="button" id="reAnalyzeButton">Re-analyze</button>
+              <button class="ghost-button" type="button" id="exportReportButton">Export</button>
+              <button class="ghost-button" type="button" id="shareReportButton">Share</button>
+              <button class="ghost-button" type="button" id="copyReportButton">Copy</button>
+            </div>
+          </div>
+
+          <div class="report-sections" id="reportSections"></div>
+        </section>
+
+        <section class="view" data-view-section="history">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Analysis history</h2>
+            </div>
+            <div id="historyList" class="history-grid"></div>
+          </div>
+        </section>
+
+        <section class="view" data-view-section="security">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Security &amp; trust</h2>
+            </div>
+            <div class="info-grid">
+              <div class="info-box">
+                <h4>Repository access</h4>
+                <p class="muted">Public GitHub repositories are validated and downloaded via the backend using the GitHub REST API. The app never executes repository code or package installers.</p>
+              </div>
+              <div class="info-box">
+                <h4>Static analysis</h4>
+                <p class="muted">Archives are scanned locally in a deterministic workspace. Unsafe paths, secrets, and oversized content are filtered before AI review.</p>
+              </div>
+              <div class="info-box">
+                <h4>AI processing</h4>
+                <p class="muted">Evidence is sent to configured AI providers in a provider-priority sequence. Keys remain in backend environment settings and are never exposed to the browser.</p>
+              </div>
+              <div class="info-box">
+                <h4>Evidence generation</h4>
+                <p class="muted">Focused analyses cite real file excerpts and line ranges extracted from the repository workspace after ranking and review.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-view-section="settings">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Settings</h2>
+            </div>
+            <div id="settingsPanel" class="settings-list"></div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <div class="footer-inner">
+          <div>GitHub Repo Analyzer</div>
+          <div>Local-first repository intelligence</div>
+          <div><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a></div>
+        </div>
+      </footer>
+    </div>
+
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+      const PIPELINE_STAGES = [
+        { key: 'queued', label: 'Queued' },
+        { key: 'validating', label: 'Repository validation' },
+        { key: 'downloading', label: 'Repository fetch' },
+        { key: 'extracting', label: 'Repository indexing' },
+        { key: 'scanning', label: 'Technology detection' },
+        { key: 'building_context', label: 'Context assembly' },
+        { key: 'discovering', label: 'Evidence ranking' },
+        { key: 'extracting_evidence', label: 'Evidence extraction' },
+        { key: 'interpreting', label: 'AI reasoning' },
+        { key: 'analyzing', label: 'AI analysis' },
+        { key: 'validating_result', label: 'Validation' },
+        { key: 'completed', label: 'Completed' }
+      ];
+
+      const ARCHETYPES = [
+        { label: 'Technology / Core', value: 'technology' },
+        { label: 'Web App', value: 'web_app' },
+        { label: 'REST / API', value: 'api' },
+        { label: 'AI / ML', value: 'ai_ml' },
+        { label: 'Medical / High-Assurance', value: 'medical' },
+        { label: 'CLI / System Tool', value: 'cli' }
+      ];
+
+      const state = {
+        currentView: 'analyze',
+        repository: '',
+        selectedArchetype: 'web_app',
+        selectedScope: 'targeted',
+        analysisId: null,
+        poller: null,
+        result: null,
+        settings: null,
+        history: []
+      };
+
+      const repoInput = document.getElementById('repoInput');
+      const validationStatus = document.getElementById('validationStatus');
+      const analyzeButton = document.getElementById('analyzeButton');
+      const questionInput = document.getElementById('questionInput');
+      const focusedToggle = document.getElementById('focusedToggle');
+
+      function setView(viewName) {
+        state.currentView = viewName;
+        document.querySelectorAll('[data-view-section]').forEach((section) => {
+          const isActive = section.getAttribute('data-view-section') === viewName;
+          section.classList.toggle('active', isActive);
+        });
+        document.querySelectorAll('.nav-item[data-view]').forEach((button) => {
+          const isActive = button.getAttribute('data-view') === viewName;
+          button.classList.toggle('active', isActive);
+        });
+        document.getElementById('viewStatus').textContent = viewName === 'history' ? 'History' : viewName === 'security' ? 'Security & Trust' : viewName === 'settings' ? 'Settings' : viewName === 'progress' ? 'Progress' : viewName === 'report' ? 'Report' : 'Analyze';
+      }
+
+      function humanizeStatus(status) {
+        if (!status) return 'Queued';
+        return status.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+      }
+
+      function showToast(title, message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+          <div>
+            <span class="toast-title">${title}</span>
+            <span>${message}</span>
+          </div>
+          <button class="toast-close" type="button" aria-label="Dismiss notification">×</button>
+        `;
+        toast.querySelector('.toast-close').addEventListener('click', () => toast.remove());
+        document.getElementById('toastStack').appendChild(toast);
+        window.setTimeout(() => toast.remove(), 4200);
+      }
+
+      function setValidationState(type, message) {
+        validationStatus.className = `status-line ${type}`;
+        validationStatus.textContent = message;
+      }
+
+      function normalizeRepository(value) {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return { ok: false, error: 'Please enter a valid GitHub repository URL.' };
+        }
+
+        if (trimmed.includes('://')) {
+          try {
+            const url = new URL(trimmed);
+            if (url.hostname.toLowerCase() !== 'github.com') {
+              return { ok: false, error: 'Only GitHub.com repositories are supported.' };
+            }
+            const segments = url.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+            if (segments.length < 2) {
+              return { ok: false, error: 'Please enter a valid GitHub repository URL.' };
+            }
+            const owner = segments[0];
+            const repo = segments[1].replace(/\.git$/i, '');
+            if (!owner || !repo || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repo)) {
+              return { ok: false, error: 'Repository owner and name contain invalid characters.' };
+            }
+            return { ok: true, value: `https://github.com/${owner}/${repo}` };
+          } catch (_error) {
+            return { ok: false, error: 'Please enter a valid GitHub repository URL.' };
+          }
+        }
+
+        const shorthand = trimmed.replace(/^https?:\/\/github\.com\//i, '').replace(/\/+$/, '').replace(/\.git$/i, '');
+        const parts = shorthand.split('/').filter(Boolean);
+        if (parts.length !== 2) {
+          return { ok: false, error: 'Use owner/repository such as facebook/react.' };
+        }
+
+        const [owner, repo] = parts;
+        if (!owner || !repo || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repo)) {
+          return { ok: false, error: 'Repository owner and name contain invalid characters.' };
+        }
+        return { ok: true, value: `https://github.com/${owner}/${repo}` };
+      }
+
+      function renderArchetypes() {
+        const grid = document.getElementById('archetypeGrid');
+        grid.innerHTML = '';
+        ARCHETYPES.forEach((type) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'chip-button';
+          if (state.selectedArchetype === type.value) {
+            button.classList.add('active');
+            button.setAttribute('aria-pressed', 'true');
+          } else {
+            button.setAttribute('aria-pressed', 'false');
+          }
+          button.textContent = type.label;
+          button.addEventListener('click', () => {
+            state.selectedArchetype = type.value;
+            renderArchetypes();
+          });
+          grid.appendChild(button);
+        });
+      }
+
+      function renderScopeButtons() {
+        document.querySelectorAll('[data-scope]').forEach((button) => {
+          const checked = button.dataset.scope === state.selectedScope;
+          button.classList.toggle('active', checked);
+          button.setAttribute('aria-pressed', String(checked));
+        });
+      }
+
+      async function fetchJson(url, options = {}) {
+        const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+        const contentType = response.headers.get('content-type') || '';
+        let payload = null;
+        if (contentType.includes('application/json')) {
+          payload = await response.json();
+        }
+        if (!response.ok) {
+          const message = payload && payload.detail ? payload.detail : 'The request could not be completed.';
+          throw new Error(message);
+        }
+        return payload;
+      }
+
+      async function validateRepository() {
+        const normalized = normalizeRepository(repoInput.value);
+        if (!normalized.ok) {
+          setValidationState('error', normalized.error);
+          return null;
+        }
+
+        try {
+          await fetchJson('/api/repositories/validate', {
+            method: 'POST',
+            body: JSON.stringify({ url: normalized.value })
+          });
+          setValidationState('success', 'Valid GitHub repository.');
+          state.repository = normalized.value;
+          return normalized.value;
+        } catch (error) {
+          setValidationState('error', error.message || 'Unable to validate this repository.');
+          return null;
+        }
+      }
+
+      async function startAnalysis() {
+        const repository = await validateRepository();
+        if (!repository) return;
+
+        const advancedEnabled = focusedToggle.getAttribute('aria-checked') === 'true';
+        const question = questionInput.value.trim();
+        if (advancedEnabled && !question) {
+          setValidationState('error', 'A focused analysis question is required when advanced analysis is enabled.');
+          questionInput.focus();
+          return;
+        }
+
+        analyzeButton.classList.add('button-disabled');
+        analyzeButton.disabled = true;
+
+        try {
+          const response = await fetchJson('/api/analyze', {
+            method: 'POST',
+            body: JSON.stringify({
+              url: repository,
+              advanced: {
+                enabled: advancedEnabled,
+                repository_type: state.selectedArchetype,
+                question: question
+              }
+            })
+          });
+
+          state.analysisId = response.analysis_id;
+          setView('progress');
+          document.getElementById('progressTitle').textContent = 'Queued';
+          document.getElementById('progressBadge').textContent = 'Queued';
+          renderPipelineState('queued');
+          document.getElementById('lastUpdatedStatus').textContent = 'Queued';
+          document.getElementById('repoStatusValue').textContent = 'Running';
+          document.getElementById('analysisModeStatus').textContent = advancedEnabled ? 'Focused' : 'Standard';
+          pollAnalysisStatus(response.analysis_id);
+          showToast('Analysis started', 'The repository analysis is running in the background.', 'info');
+        } catch (error) {
+          setValidationState('error', error.message || 'The repository analysis could not be started.');
+          showToast('Analysis failed', error.message || 'Could not analyze repository.', 'error');
+        } finally {
+          analyzeButton.disabled = false;
+          analyzeButton.classList.remove('button-disabled');
+        }
+      }
+
+      function renderPipelineState(status) {
+        const currentIndex = PIPELINE_STAGES.findIndex((stage) => stage.key === status);
+        const progressPercent = currentIndex >= 0 ? ((currentIndex + 1) / PIPELINE_STAGES.length) * 100 : 0;
+        document.getElementById('progressFill').style.width = `${Math.min(progressPercent, 100)}%`;
+        document.getElementById('progressBadge').textContent = humanizeStatus(status || 'queued');
+        document.getElementById('progressTitle').textContent = humanizeStatus(status || 'queued');
+
+        const list = document.getElementById('pipelineList');
+        list.innerHTML = PIPELINE_STAGES.map((stage, index) => {
+          const active = stage.key === status;
+          const complete = index < (currentIndex >= 0 ? currentIndex : 0);
+          return `
+            <div class="pipeline-item ${active ? 'active' : ''} ${complete ? 'complete' : ''}">
+              <span class="pipeline-dot" aria-hidden="true"></span>
+              <div>${stage.label}</div>
+              <div class="pipeline-meta">${complete ? 'Complete' : active ? 'Current' : 'Queued'}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      async function pollAnalysisStatus(id) {
+        if (state.poller) clearInterval(state.poller);
+
+        const tick = async () => {
+          try {
+            const data = await fetchJson(`/api/analyze/${id}`);
+            document.getElementById('lastUpdatedStatus').textContent = humanizeStatus(data.status || 'queued');
+            document.getElementById('repoStatusValue').textContent = data.status === 'completed' ? 'Complete' : data.status === 'failed' ? 'Failed' : 'Running';
+            renderPipelineState(data.status || 'queued');
+
+            if (data.status === 'completed') {
+              clearInterval(state.poller);
+              state.poller = null;
+              state.result = data.result || null;
+              renderReport(data);
+              setView('report');
+              showToast('Analysis complete', 'The repository report is ready.', 'success');
+            } else if (data.status === 'failed') {
+              clearInterval(state.poller);
+              state.poller = null;
+              setValidationState('error', data.error || 'The analysis failed and no result was produced.');
+              showToast('Analysis failed', data.error || 'The analysis could not complete.', 'error');
+              setView('analyze');
+            }
+          } catch (error) {
+            clearInterval(state.poller);
+            state.poller = null;
+            setView('analyze');
+            setValidationState('error', error.message || 'Unable to load analysis status.');
+            showToast('Status unavailable', 'The backend was not reachable while checking the analysis status.', 'error');
+          }
+        };
+
+        await tick();
+        state.poller = setInterval(tick, 2000);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function renderTagList(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '<p class="muted">Not available.</p>';
+        }
+        return `<div class="tag-list">${items.map((item) => `<span class="tag">${escapeHtml(String(item))}</span>`).join('')}</div>`;
+      }
+
+      function renderEvidenceList(result) {
+        const evidence = result.evidence || [];
+        if (!Array.isArray(evidence) || evidence.length === 0) {
+          return '<p class="muted">No evidence was produced for this analysis.</p>';
+        }
+        return `
+          <div class="list">
+            ${evidence.map((item) => `
+              <div class="list-item">
+                <div class="muted">${escapeHtml(item.file || item.path || 'Evidence')}</div>
+                <div>${escapeHtml(item.reason || 'Evidence was discovered in the repository scan.')}</div>
+                ${Array.isArray(item.symbols) && item.symbols.length ? `<div class="tag-list" style="margin-top:8px;">${item.symbols.map((symbol) => `<span class="tag">${escapeHtml(symbol)}</span>`).join('')}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderReport(data) {
+        const result = data.result || state.result || {};
+        const repoName = result.repository && result.repository.name ? `${result.repository.owner}/${result.repository.name}` : state.repository || 'Repository';
+        document.getElementById('reportTitle').textContent = repoName;
+
+        const sections = [
+          { heading: 'Repository Overview', body: `
+            <div class="metrics">
+              <div class="metric"><span class="metric-label">Overall score</span><span class="metric-value">${result.overall_score ?? '—'}</span></div>
+              <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${result.confidence || 'Not available'}</span></div>
+              <div class="metric"><span class="metric-label">Technology stack</span><span class="metric-value">${Array.isArray(result.technology_stack) ? result.technology_stack.length : '—'}</span></div>
+              <div class="metric"><span class="metric-label">Recommendations</span><span class="metric-value">${Array.isArray(result.recommendations) ? result.recommendations.length : '—'}</span></div>
+            </div>
+          ` },
+          { heading: 'Architecture', body: `<p class="muted">${escapeHtml(result.architecture && result.architecture.description ? result.architecture.description : 'Architecture details are not available for this repository.')}</p>` },
+          { heading: 'Technology Stack', body: renderTagList(result.technology_stack) },
+          { heading: 'Repository Structure', body: renderTagList(result.directory_overview || result.important_files || []) },
+          { heading: 'Strengths', body: renderTagList(result.strengths) },
+          { heading: 'Weaknesses', body: renderTagList(result.weaknesses) },
+          { heading: 'Security Findings', body: renderTagList(result.security_findings) },
+          { heading: 'AI Insights', body: `<p class="muted">${escapeHtml(result.project_purpose || 'AI insights were not generated for this repository.')}</p>` },
+          { heading: 'Evidence', body: renderEvidenceList(result) },
+          { heading: 'Recommendations', body: renderTagList(result.recommendations) }
+        ];
+
+        const container = document.getElementById('reportSections');
+        container.innerHTML = `
+          <div class="report-section">
+            <h3>Executive summary</h3>
+            <p class="muted">${escapeHtml(data.summary || result.executive_summary || 'No summary available.')}</p>
+          </div>
+          ${sections.map((section) => `
+            <div class="report-section">
+              <h3>${section.heading}</h3>
+              ${section.body}
+            </div>
+          `).join('')}
+        `;
+      }
+
+      async function loadHistory() {
+        try {
+          const analyses = await fetchJson('/api/analyses');
+          state.history = Array.isArray(analyses) ? analyses : [];
+          const container = document.getElementById('historyList');
+          if (!state.history.length) {
+            container.innerHTML = '<div class="empty-state">No repository analyses yet.</div>';
+            return;
+          }
+
+          container.innerHTML = state.history.map((item) => `
+            <div class="history-item">
+              <div class="history-row">
+                <div>
+                  <div class="history-title">${escapeHtml(item.owner && item.name ? `${item.owner}/${item.name}` : item.repository_url || 'Unknown repository')}</div>
+                  <div class="muted">${escapeHtml(item.created_at ? new Date(item.created_at).toLocaleString() : 'Unknown date')} • ${escapeHtml(item.status || 'Queued')}</div>
+                </div>
+                <div class="history-actions">
+                  <button class="ghost-button" type="button" data-open-history="${item.id}">Open</button>
+                  <button class="danger-button" type="button" data-delete-history="${item.id}">Delete</button>
+                </div>
+              </div>
+              <div class="muted" style="margin-top:10px;">${escapeHtml(item.summary || item.error || 'No summary available.')}</div>
+            </div>
+          `).join('');
+
+          container.querySelectorAll('[data-open-history]').forEach((button) => {
+            button.addEventListener('click', async () => {
+              try {
+                const detail = await fetchJson(`/api/analyze/${button.dataset.openHistory}`);
+                state.result = detail.result || null;
+                renderReport(detail);
+                setView('report');
+              } catch (error) {
+                showToast('Open failed', error.message || 'The analysis could not be loaded.', 'error');
+              }
+            });
+          });
+
+          container.querySelectorAll('[data-delete-history]').forEach((button) => {
+            button.addEventListener('click', async () => {
+              try {
+                await fetchJson(`/api/analyses/${button.dataset.deleteHistory}`, { method: 'DELETE' });
+                showToast('Analysis removed', 'The history item was deleted.', 'success');
+                await loadHistory();
+              } catch (error) {
+                showToast('Delete failed', error.message || 'The analysis could not be deleted.', 'error');
+              }
+            });
+          });
+        } catch (error) {
+          document.getElementById('historyList').innerHTML = '<div class="empty-state">History is unavailable right now.</div>';
+          showToast('History unavailable', error.message || 'Could not load analysis history.', 'error');
+        }
+      }
+
+      function renderSettingsPanel(settings) {
+        const panel = document.getElementById('settingsPanel');
+        if (!settings) {
+          panel.innerHTML = '<div class="empty-state">Settings are unavailable right now.</div>';
+          return;
+        }
+
+        const providerRows = Object.entries(settings.providers || {}).map(([name, enabled]) => `
+          <div class="settings-row">
+            <span>${escapeHtml(name)}</span>
+            <span class="${enabled ? 'status-line success' : 'muted'}">${enabled ? 'Configured' : 'Not configured'}</span>
+          </div>
+        `).join('');
+
+        panel.innerHTML = `
+          <div class="settings-row">
+            <span>GitHub token</span>
+            <span class="${settings.github_token ? 'status-line success' : 'muted'}">${settings.github_token ? 'Available' : 'Not configured'}</span>
+          </div>
+          ${providerRows}
+          <div class="settings-row">
+            <span>Analysis queue</span>
+            <span class="muted">${settings.limits ? settings.limits.max_concurrent_analyses : 0} concurrent / ${settings.limits ? settings.limits.max_pending_analyses : 0} pending</span>
+          </div>
+          <div class="settings-row">
+            <span>Provider priority</span>
+            <span class="muted">${(settings.priority || []).join(' → ') || 'Not available'}</span>
+          </div>
+        `;
+      }
+
+      async function loadSettings() {
+        try {
+          const settings = await fetchJson('/api/settings/status');
+          state.settings = settings;
+          renderSettingsPanel(settings);
+        } catch (error) {
+          renderSettingsPanel(null);
+          showToast('Settings unavailable', error.message || 'The settings endpoint could not be loaded.', 'error');
+        }
+      }
+
+      document.querySelectorAll('.preset-link').forEach((button) => {
+        button.addEventListener('click', () => {
+          repoInput.value = button.dataset.preset;
+          const normalized = normalizeRepository(repoInput.value);
+          if (normalized.ok) {
+            setValidationState('success', 'Preset selected.');
+            state.repository = normalized.value;
+          } else {
+            setValidationState('error', normalized.error);
+          }
+        });
+      });
+
+      document.getElementById('clearRepoInput').addEventListener('click', () => {
+        repoInput.value = '';
+        setValidationState('info', 'Ready to analyze.');
+      });
+
+      repoInput.addEventListener('input', () => {
+        const trimmed = repoInput.value.trim();
+        if (!trimmed) {
+          setValidationState('info', 'Ready to analyze.');
+          return;
+        }
+        const normalized = normalizeRepository(repoInput.value);
+        setValidationState(normalized.ok ? 'success' : 'error', normalized.ok ? 'Valid GitHub repository' : normalized.error);
+      });
+
+      repoInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          startAnalysis();
+        }
+      });
+
+      document.getElementById('analyzeButton').addEventListener('click', startAnalysis);
+
+      focusedToggle.addEventListener('click', () => {
+        const checked = focusedToggle.getAttribute('aria-checked') === 'true';
+        focusedToggle.setAttribute('aria-checked', String(!checked));
+        questionInput.disabled = checked;
+        document.getElementById('analysisModeStatus').textContent = !checked ? 'Focused' : 'Standard';
+      });
+
+      document.querySelectorAll('[data-scope]').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.selectedScope = button.dataset.scope;
+          renderScopeButtons();
+        });
+      });
+
+      document.getElementById('returnToAnalyze').addEventListener('click', () => setView('analyze'));
+      document.getElementById('cancelAnalysisButton').addEventListener('click', () => {
+        if (state.poller) clearInterval(state.poller);
+        state.poller = null;
+        setValidationState('info', 'Analysis cancelled.');
+        setView('analyze');
+        showToast('Analysis cancelled', 'The active analysis was cancelled locally.', 'warning');
+      });
+
+      document.getElementById('reAnalyzeButton').addEventListener('click', () => setView('analyze'));
+
+      document.getElementById('exportReportButton').addEventListener('click', () => {
+        if (!state.result) {
+          showToast('Nothing to export', 'There is no result to export yet.', 'info');
+          return;
+        }
+        const blob = new Blob([JSON.stringify(state.result, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'repository-report.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast('Exported', 'The report file was downloaded.', 'success');
+      });
+
+      document.getElementById('shareReportButton').addEventListener('click', async () => {
+        const text = state.result ? JSON.stringify(state.result, null, 2) : state.repository || 'Repository report';
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: 'GitHub Repo Analyzer', text });
+            showToast('Shared', 'The report was shared successfully.', 'success');
+            return;
+          } catch (_error) {
+            // fallback to clipboard
+          }
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('Shared', 'Share is not supported here, so the report text was copied instead.', 'info');
+        } catch (_error) {
+          showToast('Share unavailable', 'The browser could not share or copy this report.', 'error');
+        }
+      });
+
+      document.getElementById('copyReportButton').addEventListener('click', async () => {
+        const text = state.result ? JSON.stringify(state.result, null, 2) : state.repository || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('Copied', 'The report was copied to the clipboard.', 'success');
+        } catch (_error) {
+          showToast('Copy failed', 'Clipboard access is unavailable in this browser.', 'error');
+        }
+      });
+
+      document.getElementById('menuToggle').addEventListener('click', () => {
+        const open = document.getElementById('mobileMenu').classList.toggle('open');
+        document.getElementById('menuToggle').setAttribute('aria-expanded', String(open));
+      });
+
+      document.querySelectorAll('.nav-item[data-view]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const view = button.dataset.view;
+          if (view === 'analyze' || view === 'history' || view === 'security' || view === 'settings') {
+            setView(view);
+          }
+        });
+      });
+
+      function initializeApp() {
+        renderArchetypes();
+        renderScopeButtons();
+        setValidationState('info', 'Ready to analyze.');
+        setView('analyze');
+        loadHistory();
+        loadSettings();
+      }
+
+      initializeApp();
+    </script>
+  </body>
 </html>

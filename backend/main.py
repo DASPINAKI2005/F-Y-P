@@ -11,9 +11,10 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
-from .ai_router import configured_providers, generate_analysis, provider_priority, set_provider_priority
+from .ai_router import configured_providers, generate_analysis, parse_focused_result, provider_priority, set_provider_priority
 from .config import FRONTEND_ROOT, WORKSPACE_ROOT, settings
 from .database import create_analysis, delete_analysis, get_analysis, init_db, list_analyses, update_analysis
+from .focused_analysis import REPOSITORY_TYPES, build_focused_prompt, discover_candidates, enrich_focused_result, read_evidence
 from .github_service import GitHubService
 from .prompt_builder import build_prompt
 from .repo_parser import extract_archive, read_selected, scan_repository
@@ -37,7 +38,7 @@ app = FastAPI(title="GitHub Repo Analyzer", version="1.0.0", lifespan=lifespan)
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
@@ -45,8 +46,14 @@ async def security_headers(request: Request, call_next):
 class RepositoryRequest(BaseModel):
     url: HttpUrl
 
+class AdvancedSettings(BaseModel):
+    enabled: bool = False
+    repository_type: str = "Auto Detect"
+    question: str = ""
+
 class AnalyzeRequest(BaseModel):
     url: HttpUrl
+    advanced: AdvancedSettings | None = None
 
 class PriorityRequest(BaseModel):
     priority: list[str]
@@ -69,6 +76,16 @@ async def analyze(request: AnalyzeRequest, tasks: BackgroundTasks):
         parsed = parse_github_url(str(request.url))
     except ValueError as error:
         raise HTTPException(400, str(error)) from error
+    advanced = None
+    if request.advanced is not None and request.advanced.enabled:
+        question = (request.advanced.question or "").strip()
+        if not question:
+            raise HTTPException(400, "A question is required when Advanced Analysis is enabled.")
+        if len(question) > 2000:
+            raise HTTPException(400, "The question must be 2000 characters or fewer.")
+        if request.advanced.repository_type not in REPOSITORY_TYPES:
+            raise HTTPException(400, f"Repository type must be one of: {', '.join(REPOSITORY_TYPES)}.")
+        advanced = request.advanced
     global _active_jobs
     async with _job_lock:
         capacity = settings.max_concurrent_analyses + settings.max_pending_analyses
@@ -76,11 +93,11 @@ async def analyze(request: AnalyzeRequest, tasks: BackgroundTasks):
             raise HTTPException(429, "Analysis queue is full. Try again later.")
         _active_jobs += 1
     analysis_id = uuid.uuid4().hex
-    create_analysis(analysis_id, str(request.url), parsed["owner"], parsed["name"], parsed["ref"] or None)
-    tasks.add_task(run_analysis, analysis_id, str(request.url))
+    create_analysis(analysis_id, str(request.url), parsed["owner"], parsed["name"], parsed["ref"] or None, analysis_mode="focused" if advanced else "standard", repository_type=advanced.repository_type if advanced else None, user_question=advanced.question.strip() if advanced else None)
+    tasks.add_task(run_analysis, analysis_id, str(request.url), advanced)
     return {"analysis_id": analysis_id, "status": "queued"}
 
-async def run_analysis(analysis_id: str, url: str) -> None:
+async def run_analysis(analysis_id: str, url: str, advanced: AdvancedSettings | None = None) -> None:
     global _active_jobs
     archive = None
     workspace = None
@@ -104,13 +121,29 @@ async def run_analysis(analysis_id: str, url: str) -> None:
         await asyncio.to_thread(extract_archive, archive, workspace)
         update_analysis(analysis_id, status="scanning")
         scan = await asyncio.to_thread(scan_repository, workspace)
-        update_analysis(analysis_id, status="building_context")
-        selected = await asyncio.to_thread(read_selected, workspace, scan["important_files"])
-        system, prompt = build_prompt(repository, scan, selected)
-        update_analysis(analysis_id, status="analyzing")
-        result, provider = await generate_analysis(prompt, system)
-        update_analysis(analysis_id, status="validating_result")
-        update_analysis(analysis_id, status="completed", score=result["overall_score"], summary=result.get("executive_summary", ""), provider=provider, result_json=json.dumps(result))
+        if advanced is not None:
+            update_analysis(analysis_id, status="interpreting")
+            question = advanced.question.strip()
+            repository_type = advanced.repository_type or "Auto Detect"
+            update_analysis(analysis_id, status="discovering")
+            discovery = await asyncio.to_thread(discover_candidates, workspace, scan, question, repository_type)
+            update_analysis(analysis_id, status="extracting_evidence")
+            evidence = await asyncio.to_thread(read_evidence, workspace, discovery)
+            system, prompt = await asyncio.to_thread(build_focused_prompt, repository, scan, question, repository_type, evidence)
+            update_analysis(analysis_id, status="analyzing")
+            result, provider = await generate_analysis(prompt, system, parse=parse_focused_result)
+            result["question"] = question
+            result = await asyncio.to_thread(enrich_focused_result, result, repository, scan, evidence)
+            update_analysis(analysis_id, status="validating_result")
+            update_analysis(analysis_id, status="completed", score=None, summary=result.get("answer", ""), provider=provider, result_json=json.dumps(result))
+        else:
+            update_analysis(analysis_id, status="building_context")
+            selected = await asyncio.to_thread(read_selected, workspace, scan["important_files"])
+            system, prompt = build_prompt(repository, scan, selected)
+            update_analysis(analysis_id, status="analyzing")
+            result, provider = await generate_analysis(prompt, system)
+            update_analysis(analysis_id, status="validating_result")
+            update_analysis(analysis_id, status="completed", score=result["overall_score"], summary=result.get("executive_summary", ""), provider=provider, result_json=json.dumps(result))
     except Exception as error:
         logger.exception("analysis_failed id=%s", analysis_id)
         update_analysis(analysis_id, status="failed", error=str(error))

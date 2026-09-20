@@ -1,0 +1,256 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e268] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e269]:
+    - banner [ref=e270]:
+      - generic [ref=e271]:
+        - link "Repo Analyzer" [ref=e272] [cursor=pointer]:
+          - /url: "#/"
+          - generic [aria-hidden] [ref=e273]: RA
+        - button "Toggle navigation" [ref=e275] [cursor=pointer]
+    - main [active] [ref=e279]:
+      - generic [ref=e280]:
+        - generic [ref=e281]: // complete
+        - heading "fraud-detection-analytics — analysis complete" [level=1] [ref=e282]
+        - generic [ref=e283]:
+          - status [ref=e284]: Completed
+          - paragraph [ref=e285]: Elapsed 00:00
+        - list "Analysis pipeline" [ref=e286]:
+          - listitem [ref=e287]:
+            - generic [aria-hidden] [ref=e288]: ✓
+            - generic [ref=e289]: Queued
+          - listitem [ref=e290]:
+            - generic [aria-hidden] [ref=e291]: ✓
+            - generic [ref=e292]: Validating repository
+          - listitem [ref=e293]:
+            - generic [aria-hidden] [ref=e294]: ✓
+            - generic [ref=e295]: Downloading repository
+          - listitem [ref=e296]:
+            - generic [aria-hidden] [ref=e297]: ✓
+            - generic [ref=e298]: Extracting files
+          - listitem [ref=e299]:
+            - generic [aria-hidden] [ref=e300]: ✓
+            - generic [ref=e301]: Scanning file tree
+          - listitem [ref=e302]:
+            - generic [aria-hidden] [ref=e303]: ✓
+            - generic [ref=e304]: Building analysis context
+          - listitem [ref=e305]:
+            - generic [aria-hidden] [ref=e306]: ✓
+            - generic [ref=e307]: Running AI analysis
+          - listitem [ref=e308]:
+            - generic [aria-hidden] [ref=e309]: ✓
+            - generic [ref=e310]: Validating AI response
+        - generic [ref=e312]:
+          - generic [ref=e313]:
+            - generic [ref=e315]:
+              - paragraph [ref=e316]: repository report
+              - heading "Parna-Nayak / fraud-detection-analytics" [level=2] [ref=e317]
+              - paragraph [ref=e318]: No description provided.
+              - generic [ref=e319]:
+                - generic [ref=e320]: Standard analysis
+                - link "View on GitHub" [ref=e321] [cursor=pointer]:
+                  - /url: https://github.com/Parna-Nayak/fraud-detection-analytics
+            - generic [ref=e322]:
+              - generic [ref=e323]:
+                - generic [ref=e324]: Owner
+                - generic [ref=e325]: Parna-Nayak
+              - generic [ref=e326]:
+                - generic [ref=e327]: Reference
+                - generic [ref=e328]: default branch
+              - generic [ref=e329]:
+                - generic [ref=e330]: Mode
+                - generic [ref=e331]: Standard
+              - generic [ref=e332]:
+                - generic [ref=e333]: Engine
+                - generic [ref=e334]: OpenRouter
+              - generic [ref=e335]:
+                - generic [ref=e336]: Source
+                - link "github.com" [ref=e338] [cursor=pointer]:
+                  - /url: https://github.com/Parna-Nayak/fraud-detection-analytics
+          - generic [ref=e339]:
+            - generic [ref=e340]:
+              - paragraph [ref=e341]: End-to-end data science and machine learning solution for analyzing financial transaction patterns and identifying potential fraudulent activity.
+              - paragraph [ref=e342]: Analyze transaction data to identify fraud patterns and risk factors, perform exploratory data analysis, and provide actionable business insights.
+              - paragraph [ref=e343]: "Confidence: High"
+            - generic [ref=e344]:
+              - paragraph [ref=e345]: Overall score
+              - paragraph [ref=e346]: "0"
+              - img "Overall score 85 out of 100" [ref=e347]
+              - paragraph [ref=e348]: Strong
+          - generic [ref=e349]:
+            - generic [ref=e350]:
+              - heading "Architecture" [level=2] [ref=e351]
+              - generic [ref=e352]: Microservice
+            - paragraph [ref=e353]: FastAPI backend with a focus on an analytics dashboard and machine learning predictions.
+          - generic [ref=e354]:
+            - heading "Technology stack" [level=2] [ref=e356]
+            - generic [ref=e357]:
+              - generic [ref=e358]: Python 3.11
+              - generic [ref=e359]: FastAPI
+              - generic [ref=e360]: Pandas
+              - generic [ref=e361]: NumPy
+              - generic [ref=e362]: Scikit-learn
+              - generic [ref=e363]: Plotly.js
+              - generic [ref=e364]: Render
+          - generic [ref=e365]:
+            - generic [ref=e366]:
+              - heading "Key features" [level=2] [ref=e367]
+              - generic [ref=e368]: "8"
+            - list [ref=e369]:
+              - listitem [ref=e370]:
+                - generic [aria-hidden] [ref=e371]: ✓
+                - generic [ref=e372]: CSV Transaction Upload
+              - listitem [ref=e373]:
+                - generic [aria-hidden] [ref=e374]: ✓
+                - generic [ref=e375]: Automated Data Quality Analysis
+              - listitem [ref=e376]:
+                - generic [aria-hidden] [ref=e377]: ✓
+                - generic [ref=e378]: Exploratory Data Analysis
+              - listitem [ref=e379]:
+                - generic [aria-hidden] [ref=e380]: ✓
+                - generic [ref=e381]: Fraud Trend Analysis
+              - listitem [ref=e382]:
+                - generic [aria-hidden] [ref=e383]: ✓
+                - generic [ref=e384]: KPI Dashboard
+              - listitem [ref=e385]:
+                - generic [aria-hidden] [ref=e386]: ✓
+                - generic [ref=e387]: Feature Engineering
+            - button "Show 2 more" [ref=e388] [cursor=pointer]
+          - generic [ref=e389]:
+            - heading "Strengths and weaknesses" [level=2] [ref=e391]
+            - generic [ref=e392]:
+              - generic [ref=e393]:
+                - heading "Strengths" [level=3] [ref=e394]
+                - list [ref=e395]:
+                  - listitem [ref=e396]:
+                    - generic [aria-hidden] [ref=e397]: +
+                    - generic [ref=e398]: Complete analytical pipeline from data ingestion to visualization.
+                  - listitem [ref=e399]:
+                    - generic [aria-hidden] [ref=e400]: +
+                    - generic [ref=e401]: Automated data quality checks and insightful analytics.
+                  - listitem [ref=e402]:
+                    - generic [aria-hidden] [ref=e403]: +
+                    - generic [ref=e404]: Interactive dashboard for real-time fraud detection.
+              - generic [ref=e405]:
+                - heading "Weaknesses" [level=3] [ref=e406]
+                - list [ref=e407]:
+                  - listitem [ref=e408]:
+                    - generic [aria-hidden] [ref=e409]: −
+                    - generic [ref=e410]: Potential overfitting with complex models if not managed.
+                  - listitem [ref=e411]:
+                    - generic [aria-hidden] [ref=e412]: −
+                    - generic [ref=e413]: Requires quality training data for accurate predictions.
+          - generic [ref=e414]:
+            - generic [ref=e415]:
+              - heading "Testing" [level=2] [ref=e416]
+              - generic [ref=e417]: "2"
+            - list [ref=e418]:
+              - listitem [ref=e419]:
+                - generic [aria-hidden] [ref=e420]: •
+                - generic [ref=e421]: API smoke tests
+              - listitem [ref=e422]:
+                - generic [aria-hidden] [ref=e423]: •
+                - generic [ref=e424]: Comprehensive API test suite
+          - generic [ref=e425]:
+            - generic [ref=e426]:
+              - heading "Documentation" [level=2] [ref=e427]
+              - generic [ref=e428]: "2"
+            - list [ref=e429]:
+              - listitem [ref=e430]:
+                - generic [aria-hidden] [ref=e431]: •
+                - generic [ref=e432]: Project overview in README.md
+              - listitem [ref=e433]:
+                - generic [aria-hidden] [ref=e434]: •
+                - generic [ref=e435]: Documentation available in docs directory
+          - generic [ref=e436]:
+            - generic [ref=e437]:
+              - heading "Dependencies" [level=2] [ref=e438]
+              - generic [ref=e439]: "8"
+            - list [ref=e440]:
+              - listitem [ref=e441]:
+                - generic [aria-hidden] [ref=e442]: •
+                - generic [ref=e443]: FastAPI
+              - listitem [ref=e444]:
+                - generic [aria-hidden] [ref=e445]: •
+                - generic [ref=e446]: Uvicorn
+              - listitem [ref=e447]:
+                - generic [aria-hidden] [ref=e448]: •
+                - generic [ref=e449]: Pydantic
+              - listitem [ref=e450]:
+                - generic [aria-hidden] [ref=e451]: •
+                - generic [ref=e452]: Pandas
+              - listitem [ref=e453]:
+                - generic [aria-hidden] [ref=e454]: •
+                - generic [ref=e455]: NumPy
+              - listitem [ref=e456]:
+                - generic [aria-hidden] [ref=e457]: •
+                - generic [ref=e458]: Scikit-learn
+            - button "Show 2 more" [ref=e459] [cursor=pointer]
+          - generic [ref=e460]:
+            - generic [ref=e461]:
+              - heading "Deployment" [level=2] [ref=e462]
+              - generic [ref=e463]: "1"
+            - list [ref=e464]:
+              - listitem [ref=e465]:
+                - generic [aria-hidden] [ref=e466]: •
+                - generic [ref=e467]: Deployed on Render with health monitoring.
+          - generic [ref=e468]:
+            - generic [ref=e469]:
+              - heading "Directory overview" [level=2] [ref=e470]
+              - generic [ref=e471]: "8"
+            - list [ref=e472]:
+              - listitem [ref=e473]:
+                - generic [aria-hidden] [ref=e474]: •
+                - generic [ref=e475]: app - FastAPI backend
+              - listitem [ref=e476]:
+                - generic [aria-hidden] [ref=e477]: •
+                - generic [ref=e478]: src - Data science pipeline
+              - listitem [ref=e479]:
+                - generic [aria-hidden] [ref=e480]: •
+                - generic [ref=e481]: data - Sample dataset
+              - listitem [ref=e482]:
+                - generic [aria-hidden] [ref=e483]: •
+                - generic [ref=e484]: models - Saved ML artifacts
+              - listitem [ref=e485]:
+                - generic [aria-hidden] [ref=e486]: •
+                - generic [ref=e487]: templates - Dashboard HTML template
+              - listitem [ref=e488]:
+                - generic [aria-hidden] [ref=e489]: •
+                - generic [ref=e490]: static - Frontend assets
+            - button "Show 2 more" [ref=e491] [cursor=pointer]
+          - generic [ref=e492]:
+            - generic [ref=e493]:
+              - heading "Important files" [level=2] [ref=e494]
+              - generic [ref=e495]: "3"
+            - list [ref=e496]:
+              - listitem [ref=e497]:
+                - generic [aria-hidden] [ref=e498]: •
+                - generic [ref=e499]: README.md
+              - listitem [ref=e500]:
+                - generic [aria-hidden] [ref=e501]: •
+                - generic [ref=e502]: app/main.py
+              - listitem [ref=e503]:
+                - generic [aria-hidden] [ref=e504]: •
+                - generic [ref=e505]: requirements.txt
+    - contentinfo [ref=e506]:
+      - generic [ref=e507]:
+        - generic [ref=e508]:
+          - text: Repo Analyzer
+          - paragraph [ref=e509]: Local-first repository intelligence. Static analysis only — nothing from a repository is ever executed.
+        - generic [ref=e510]:
+          - heading "Product" [level=4] [ref=e511]
+          - link "Analyzer" [ref=e512] [cursor=pointer]:
+            - /url: "#/analyzer"
+          - link "History" [ref=e513] [cursor=pointer]:
+            - /url: "#/history"
+          - link "Settings" [ref=e514] [cursor=pointer]:
+            - /url: "#/settings"
+        - generic [ref=e515]:
+          - heading "Learn" [level=4] [ref=e516]
+          - link "Documentation" [ref=e517] [cursor=pointer]:
+            - /url: "#/docs"
+          - link "About" [ref=e518] [cursor=pointer]:
+            - /url: "#/about"
+      - generic [ref=e519]:
+        - generic [ref=e520]: Runs on your machine. Analyses never leave it.
+        - generic [ref=e521]: GitHub API + your configured AI provider

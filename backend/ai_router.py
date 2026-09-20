@@ -102,13 +102,60 @@ def parse_result(raw: str) -> dict:
     result["overall_score"] = max(0, min(100, int(numeric_score)))
     return result
 
-async def generate_analysis(prompt: str, system: str) -> tuple[dict, str]:
+FOCUSED_STATUS_ALIASES = {
+    "implemented": "implemented", "found": "implemented", "yes": "implemented", "working": "implemented",
+    "partial": "partial", "partially_implemented": "partial", "partially": "partial", "partial_implementation": "partial", "partly": "partial",
+    "referenced_only": "referenced_only", "referenced": "referenced_only", "mentioned": "referenced_only", "documented_only": "referenced_only",
+    "not_found": "not_found", "not-found": "not_found", "missing": "not_found", "no": "not_found", "absent": "not_found",
+    "uncertain": "uncertain", "unknown": "uncertain", "insufficient": "uncertain", "ambiguous": "uncertain",
+}
+FOCUSED_STRENGTHS = {"strong", "moderate", "weak", "insufficient"}
+
+def parse_focused_result(raw: str) -> dict:
+    cleaned = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        result = json.loads(cleaned)
+    except json.JSONDecodeError as error:
+        raise ProviderError("AI response was not valid JSON", "invalid_json") from error
+    required = {"status", "answer", "evidence", "evidence_strength"}
+    if not required.issubset(result):
+        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+    status = FOCUSED_STATUS_ALIASES.get(str(result.get("status", "")).strip().lower().replace(" ", "_"))
+    if status is None:
+        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+    strength = str(result.get("evidence_strength", "")).strip().lower()
+    if strength not in FOCUSED_STRENGTHS:
+        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+    evidence = []
+    raw_evidence = result.get("evidence")
+    if isinstance(raw_evidence, list):
+        for item in raw_evidence:
+            if isinstance(item, dict):
+                evidence.append({"file": str(item.get("file") or item.get("path") or ""), "symbols": item.get("symbols") if isinstance(item.get("symbols"), list) else [], "reason": str(item.get("reason") or "")})
+            elif isinstance(item, str):
+                evidence.append({"file": item.strip(), "symbols": [], "reason": ""})
+    normalized = {
+        "question": str(result.get("question") or ""),
+        "status": status,
+        "answer": str(result.get("answer") or ""),
+        "evidence": evidence,
+        "how_it_works": str(result.get("how_it_works") or ""),
+        "repository_flow": result.get("repository_flow") if isinstance(result.get("repository_flow"), list) else [],
+        "limitations": str(result.get("limitations") or ""),
+        "evidence_strength": strength,
+    }
+    if not normalized["answer"]:
+        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+    return normalized
+
+async def generate_analysis(prompt: str, system: str, parse=None) -> tuple[dict, str]:
+    processor = parse or parse_result
     errors = []
     for attempt, provider in enumerate(configured_providers(), 1):
         started = time.perf_counter()
         try:
             raw = await provider.generate(prompt, system)
-            result = parse_result(raw)
+            result = processor(raw)
             logger.info("ai_provider_success provider=%s attempt=%s duration_ms=%s", provider.name, attempt, int((time.perf_counter() - started) * 1000))
             return result, provider.name
         except (ProviderError, httpx.HTTPError) as error:

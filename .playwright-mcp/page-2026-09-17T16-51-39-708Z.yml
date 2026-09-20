@@ -1,0 +1,71 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e204] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e205]:
+    - banner [ref=e206]:
+      - generic [ref=e207]:
+        - link "Repo Analyzer" [ref=e208] [cursor=pointer]:
+          - /url: "#/"
+          - generic [aria-hidden] [ref=e209]: RA
+        - button "Toggle navigation" [ref=e211] [cursor=pointer]
+    - main [active] [ref=e215]:
+      - generic [ref=e216]:
+        - heading "Past analyses" [level=1] [ref=e217]
+        - paragraph [ref=e218]: Every analysis you have run, newest first. Filter by repository name or question.
+        - searchbox "Filter history by repository name" [ref=e220]
+        - generic [ref=e221]:
+          - generic [ref=e222]:
+            - generic [ref=e223]: DASPINAKI2005/Portfolio_windows
+            - generic [ref=e225]:
+              - generic [ref=e226]: Standard
+              - generic [ref=e227]: Score 0
+            - generic [ref=e228]: 9/17/2026, 8:58:31 PM
+            - generic [ref=e229]:
+              - link "View" [ref=e230] [cursor=pointer]:
+                - /url: "#/analyzer?id=1f7d92a7e1864375812d0a5db96359d1"
+              - button "Delete analysis of DASPINAKI2005/Portfolio_windows" [ref=e231] [cursor=pointer]: Delete
+              - alert
+          - generic [ref=e232]:
+            - generic [ref=e233]: Parna-Nayak/fraud-detection-analytics
+            - generic [ref=e235]:
+              - generic [ref=e236]: Standard
+              - generic [ref=e237]: Score 85
+            - generic [ref=e238]: 9/12/2026, 8:02:20 PM
+            - generic [ref=e239]:
+              - link "View" [ref=e240] [cursor=pointer]:
+                - /url: "#/analyzer?id=0bfcfd39dc2c4d3da95c9db15da758a5"
+              - button "Delete analysis of Parna-Nayak/fraud-detection-analytics" [ref=e241] [cursor=pointer]: Delete
+              - alert
+          - generic [ref=e242]:
+            - generic [ref=e243]: Parna-Nayak/Decode-Labs
+            - generic [ref=e245]:
+              - generic [ref=e246]: Standard
+              - generic [ref=e247]: Score 75
+            - generic [ref=e248]: 9/12/2026, 6:30:12 PM
+            - generic [ref=e249]:
+              - link "View" [ref=e250] [cursor=pointer]:
+                - /url: "#/analyzer?id=401356250c114e5292f41f92052de91b"
+              - button "Delete analysis of Parna-Nayak/Decode-Labs" [ref=e251] [cursor=pointer]: Delete
+              - alert
+    - contentinfo [ref=e252]:
+      - generic [ref=e253]:
+        - generic [ref=e254]:
+          - text: Repo Analyzer
+          - paragraph [ref=e255]: Local-first repository intelligence. Static analysis only — nothing from a repository is ever executed.
+        - generic [ref=e256]:
+          - heading "Product" [level=4] [ref=e257]
+          - link "Analyzer" [ref=e258] [cursor=pointer]:
+            - /url: "#/analyzer"
+          - link "History" [ref=e259] [cursor=pointer]:
+            - /url: "#/history"
+          - link "Settings" [ref=e260] [cursor=pointer]:
+            - /url: "#/settings"
+        - generic [ref=e261]:
+          - heading "Learn" [level=4] [ref=e262]
+          - link "Documentation" [ref=e263] [cursor=pointer]:
+            - /url: "#/docs"
+          - link "About" [ref=e264] [cursor=pointer]:
+            - /url: "#/about"
+      - generic [ref=e265]:
+        - generic [ref=e266]: Runs on your machine. Analyses never leave it.
+        - generic [ref=e267]: GitHub API + your configured AI provider

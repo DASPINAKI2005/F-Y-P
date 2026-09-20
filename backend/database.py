@@ -10,9 +10,24 @@ CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS analyses (
  id TEXT PRIMARY KEY, repository_url TEXT NOT NULL, owner TEXT NOT NULL, name TEXT NOT NULL,
  ref TEXT, status TEXT NOT NULL, score INTEGER, summary TEXT, provider TEXT,
+ analysis_mode TEXT NOT NULL DEFAULT 'standard', repository_type TEXT, user_question TEXT,
  result_json TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
 """
+
+def _column_names(connection: sqlite3.Connection) -> set[str]:
+    return {row["name"] for row in connection.execute("PRAGMA table_info(analyses)").fetchall()}
+
+def _migrate(connection: sqlite3.Connection) -> None:
+    existing = _column_names(connection)
+    additions = {
+        "analysis_mode": "TEXT NOT NULL DEFAULT 'standard'",
+        "repository_type": "TEXT",
+        "user_question": "TEXT",
+    }
+    for name, ddl in additions.items():
+        if name not in existing:
+            connection.execute(f"ALTER TABLE analyses ADD COLUMN {name} {ddl}")
 
 def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -23,6 +38,7 @@ def connect() -> sqlite3.Connection:
 def init_db() -> None:
     with connect() as db:
         db.executescript(SCHEMA)
+        _migrate(db)
         if db.execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 0:
             db.execute("INSERT INTO schema_version(version) VALUES (1)")
         db.execute("UPDATE analyses SET status = 'failed', error = ?, updated_at = ? WHERE status NOT IN ('completed', 'failed')", ("Analysis interrupted because the application restarted.", now()))
@@ -30,10 +46,10 @@ def init_db() -> None:
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-def create_analysis(analysis_id: str, repository_url: str, owner: str, name: str, ref: str | None) -> None:
+def create_analysis(analysis_id: str, repository_url: str, owner: str, name: str, ref: str | None, analysis_mode: str = "standard", repository_type: str | None = None, user_question: str | None = None) -> None:
     timestamp = now()
     with connect() as db:
-        db.execute("INSERT INTO analyses(id, repository_url, owner, name, ref, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (analysis_id, repository_url, owner, name, ref, "queued", timestamp, timestamp))
+        db.execute("INSERT INTO analyses(id, repository_url, owner, name, ref, status, analysis_mode, repository_type, user_question, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (analysis_id, repository_url, owner, name, ref, "queued", analysis_mode, repository_type, user_question, timestamp, timestamp))
 
 def update_analysis(analysis_id: str, **fields: Any) -> None:
     fields["updated_at"] = now()
