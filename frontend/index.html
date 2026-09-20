@@ -494,15 +494,25 @@
 
       function showToast(title, message, type = 'info') {
         const toast = document.createElement('div');
+        const content = document.createElement('div');
+        const titleNode = document.createElement('span');
+        const messageNode = document.createElement('span');
+        const close = document.createElement('button');
+
         toast.className = `toast ${type}`;
-        toast.innerHTML = `
-          <div>
-            <span class="toast-title">${title}</span>
-            <span>${message}</span>
-          </div>
-          <button class="toast-close" type="button" aria-label="Dismiss notification">×</button>
-        `;
-        toast.querySelector('.toast-close').addEventListener('click', () => toast.remove());
+        titleNode.className = 'toast-title';
+        titleNode.textContent = title;
+        messageNode.textContent = message;
+        close.className = 'toast-close';
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Dismiss notification');
+        close.textContent = '×';
+
+        content.appendChild(titleNode);
+        content.appendChild(messageNode);
+        toast.appendChild(content);
+        toast.appendChild(close);
+        close.addEventListener('click', () => toast.remove());
         document.getElementById('toastStack').appendChild(toast);
         window.setTimeout(() => toast.remove(), 4200);
       }
@@ -554,7 +564,7 @@
 
       function renderArchetypes() {
         const grid = document.getElementById('archetypeGrid');
-        grid.innerHTML = '';
+        grid.replaceChildren();
         ARCHETYPES.forEach((type) => {
           const button = document.createElement('button');
           button.type = 'button';
@@ -672,17 +682,27 @@
         document.getElementById('progressTitle').textContent = humanizeStatus(status || 'queued');
 
         const list = document.getElementById('pipelineList');
-        list.innerHTML = PIPELINE_STAGES.map((stage, index) => {
+        list.replaceChildren();
+        PIPELINE_STAGES.forEach((stage, index) => {
           const active = stage.key === status;
           const complete = index < (currentIndex >= 0 ? currentIndex : 0);
-          return `
-            <div class="pipeline-item ${active ? 'active' : ''} ${complete ? 'complete' : ''}">
-              <span class="pipeline-dot" aria-hidden="true"></span>
-              <div>${stage.label}</div>
-              <div class="pipeline-meta">${complete ? 'Complete' : active ? 'Current' : 'Queued'}</div>
-            </div>
-          `;
-        }).join('');
+          const item = document.createElement('div');
+          const dot = document.createElement('span');
+          const label = document.createElement('div');
+          const meta = document.createElement('div');
+
+          item.className = `pipeline-item ${active ? 'active' : ''} ${complete ? 'complete' : ''}`;
+          dot.className = 'pipeline-dot';
+          dot.setAttribute('aria-hidden', 'true');
+          label.textContent = stage.label;
+          meta.className = 'pipeline-meta';
+          meta.textContent = complete ? 'Complete' : active ? 'Current' : 'Queued';
+
+          item.appendChild(dot);
+          item.appendChild(label);
+          item.appendChild(meta);
+          list.appendChild(item);
+        });
       }
 
       async function pollAnalysisStatus(id) {
@@ -732,68 +752,148 @@
       }
 
       function renderTagList(items) {
+        const wrap = document.createElement('div');
         if (!Array.isArray(items) || items.length === 0) {
-          return '<p class="muted">Not available.</p>';
+          const empty = document.createElement('p');
+          empty.className = 'muted';
+          empty.textContent = 'Not available.';
+          wrap.appendChild(empty);
+          return wrap;
         }
-        return `<div class="tag-list">${items.map((item) => `<span class="tag">${escapeHtml(String(item))}</span>`).join('')}</div>`;
+        wrap.className = 'tag-list';
+        items.forEach((item) => {
+          const tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = String(item);
+          wrap.appendChild(tag);
+        });
+        return wrap;
       }
 
       function renderEvidenceList(result) {
         const evidence = result.evidence || [];
+        const wrap = document.createElement('div');
         if (!Array.isArray(evidence) || evidence.length === 0) {
-          return '<p class="muted">No evidence was produced for this analysis.</p>';
+          const empty = document.createElement('p');
+          empty.className = 'muted';
+          empty.textContent = 'No evidence was produced for this analysis.';
+          wrap.appendChild(empty);
+          return wrap;
         }
-        return `
-          <div class="list">
-            ${evidence.map((item) => `
-              <div class="list-item">
-                <div class="muted">${escapeHtml(item.file || item.path || 'Evidence')}</div>
-                <div>${escapeHtml(item.reason || 'Evidence was discovered in the repository scan.')}</div>
-                ${Array.isArray(item.symbols) && item.symbols.length ? `<div class="tag-list" style="margin-top:8px;">${item.symbols.map((symbol) => `<span class="tag">${escapeHtml(symbol)}</span>`).join('')}</div>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        `;
+        wrap.className = 'list';
+        evidence.forEach((item) => {
+          const entry = document.createElement('div');
+          const file = document.createElement('div');
+          const reason = document.createElement('div');
+          entry.className = 'list-item';
+          file.className = 'muted';
+          file.textContent = item.file || item.path || 'Evidence';
+          reason.textContent = item.reason || 'Evidence was discovered in the repository scan.';
+          entry.appendChild(file);
+          entry.appendChild(reason);
+          if (Array.isArray(item.symbols) && item.symbols.length) {
+            const symbolsWrap = document.createElement('div');
+            symbolsWrap.className = 'tag-list';
+            symbolsWrap.style.marginTop = '8px';
+            item.symbols.forEach((symbol) => {
+              const symbolTag = document.createElement('span');
+              symbolTag.className = 'tag';
+              symbolTag.textContent = symbol;
+              symbolsWrap.appendChild(symbolTag);
+            });
+            entry.appendChild(symbolsWrap);
+          }
+          wrap.appendChild(entry);
+        });
+        return wrap;
       }
 
       function renderReport(data) {
         const result = data.result || state.result || {};
         const repoName = result.repository && result.repository.name ? `${result.repository.owner}/${result.repository.name}` : state.repository || 'Repository';
+        const aiSource = result.provider || result.source || 'Unknown';
         document.getElementById('reportTitle').textContent = repoName;
 
+        const container = document.getElementById('reportSections');
+        container.replaceChildren();
+
+        const summarySection = document.createElement('div');
+        summarySection.className = 'report-section';
+        const summaryHeading = document.createElement('h3');
+        const summaryText = document.createElement('p');
+        const sourceText = document.createElement('p');
+        const sourceLabel = document.createElement('strong');
+        summaryHeading.textContent = 'Executive summary';
+        summaryText.className = 'muted';
+        summaryText.textContent = data.summary || result.executive_summary || 'No summary available.';
+        sourceText.className = 'muted';
+        sourceLabel.textContent = 'AI source:';
+        sourceText.appendChild(sourceLabel);
+        sourceText.appendChild(document.createTextNode(` ${aiSource}`));
+        summarySection.appendChild(summaryHeading);
+        summarySection.appendChild(summaryText);
+        summarySection.appendChild(sourceText);
+        container.appendChild(summarySection);
+
+        const overview = document.createElement('div');
+        overview.className = 'report-section';
+        const overviewTitle = document.createElement('h3');
+        overviewTitle.textContent = 'Repository Overview';
+        const metrics = document.createElement('div');
+        metrics.className = 'metrics';
+
+        [
+          ['Overall score', result.overall_score ?? '—'],
+          ['Confidence', result.confidence || 'Not available'],
+          ['Technology stack', Array.isArray(result.technology_stack) ? result.technology_stack.length : '—'],
+          ['AI source', aiSource]
+        ].forEach(([label, value]) => {
+          const metric = document.createElement('div');
+          metric.className = 'metric';
+          const labelNode = document.createElement('span');
+          const valueNode = document.createElement('span');
+          labelNode.className = 'metric-label';
+          valueNode.className = 'metric-value';
+          labelNode.textContent = label;
+          valueNode.textContent = String(value);
+          metric.appendChild(labelNode);
+          metric.appendChild(valueNode);
+          metrics.appendChild(metric);
+        });
+        overview.appendChild(overviewTitle);
+        overview.appendChild(metrics);
+        container.appendChild(overview);
+
         const sections = [
-          { heading: 'Repository Overview', body: `
-            <div class="metrics">
-              <div class="metric"><span class="metric-label">Overall score</span><span class="metric-value">${result.overall_score ?? '—'}</span></div>
-              <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${result.confidence || 'Not available'}</span></div>
-              <div class="metric"><span class="metric-label">Technology stack</span><span class="metric-value">${Array.isArray(result.technology_stack) ? result.technology_stack.length : '—'}</span></div>
-              <div class="metric"><span class="metric-label">Recommendations</span><span class="metric-value">${Array.isArray(result.recommendations) ? result.recommendations.length : '—'}</span></div>
-            </div>
-          ` },
-          { heading: 'Architecture', body: `<p class="muted">${escapeHtml(result.architecture && result.architecture.description ? result.architecture.description : 'Architecture details are not available for this repository.')}</p>` },
-          { heading: 'Technology Stack', body: renderTagList(result.technology_stack) },
-          { heading: 'Repository Structure', body: renderTagList(result.directory_overview || result.important_files || []) },
-          { heading: 'Strengths', body: renderTagList(result.strengths) },
-          { heading: 'Weaknesses', body: renderTagList(result.weaknesses) },
-          { heading: 'Security Findings', body: renderTagList(result.security_findings) },
-          { heading: 'AI Insights', body: `<p class="muted">${escapeHtml(result.project_purpose || 'AI insights were not generated for this repository.')}</p>` },
-          { heading: 'Evidence', body: renderEvidenceList(result) },
-          { heading: 'Recommendations', body: renderTagList(result.recommendations) }
+          ['Architecture', document.createElement('p')],
+          ['Technology Stack', renderTagList(result.technology_stack)],
+          ['Repository Structure', renderTagList(result.directory_overview || result.important_files || [])],
+          ['Strengths', renderTagList(result.strengths)],
+          ['Weaknesses', renderTagList(result.weaknesses)],
+          ['Security Findings', renderTagList(result.security_findings)],
+          ['AI Insights', document.createElement('p')],
+          ['Evidence', renderEvidenceList(result)],
+          ['Recommendations', renderTagList(result.recommendations)]
         ];
 
-        const container = document.getElementById('reportSections');
-        container.innerHTML = `
-          <div class="report-section">
-            <h3>Executive summary</h3>
-            <p class="muted">${escapeHtml(data.summary || result.executive_summary || 'No summary available.')}</p>
-          </div>
-          ${sections.map((section) => `
-            <div class="report-section">
-              <h3>${section.heading}</h3>
-              ${section.body}
-            </div>
-          `).join('')}
-        `;
+        sections.forEach(([heading, bodyNode]) => {
+          const section = document.createElement('div');
+          section.className = 'report-section';
+          const title = document.createElement('h3');
+          title.textContent = heading;
+          section.appendChild(title);
+          if (heading === 'Architecture') {
+            bodyNode.className = 'muted';
+            bodyNode.textContent = result.architecture && result.architecture.description ? result.architecture.description : 'Architecture details are not available for this repository.';
+          } else if (heading === 'AI Insights') {
+            bodyNode.className = 'muted';
+            bodyNode.textContent = result.project_purpose || 'AI insights were not generated for this repository.';
+          }
+          if (bodyNode.nodeType === 1) {
+            section.appendChild(bodyNode);
+          }
+          container.appendChild(section);
+        });
       }
 
       async function loadHistory() {
@@ -801,31 +901,47 @@
           const analyses = await fetchJson('/api/analyses');
           state.history = Array.isArray(analyses) ? analyses : [];
           const container = document.getElementById('historyList');
+          container.replaceChildren();
           if (!state.history.length) {
-            container.innerHTML = '<div class="empty-state">No repository analyses yet.</div>';
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            empty.textContent = 'No repository analyses yet.';
+            container.appendChild(empty);
             return;
           }
 
-          container.innerHTML = state.history.map((item) => `
-            <div class="history-item">
-              <div class="history-row">
-                <div>
-                  <div class="history-title">${escapeHtml(item.owner && item.name ? `${item.owner}/${item.name}` : item.repository_url || 'Unknown repository')}</div>
-                  <div class="muted">${escapeHtml(item.created_at ? new Date(item.created_at).toLocaleString() : 'Unknown date')} • ${escapeHtml(item.status || 'Queued')}</div>
-                </div>
-                <div class="history-actions">
-                  <button class="ghost-button" type="button" data-open-history="${item.id}">Open</button>
-                  <button class="danger-button" type="button" data-delete-history="${item.id}">Delete</button>
-                </div>
-              </div>
-              <div class="muted" style="margin-top:10px;">${escapeHtml(item.summary || item.error || 'No summary available.')}</div>
-            </div>
-          `).join('');
+          state.history.forEach((item) => {
+            const card = document.createElement('div');
+            const row = document.createElement('div');
+            const info = document.createElement('div');
+            const title = document.createElement('div');
+            const meta = document.createElement('div');
+            const actions = document.createElement('div');
+            const open = document.createElement('button');
+            const remove = document.createElement('button');
+            const summary = document.createElement('div');
 
-          container.querySelectorAll('[data-open-history]').forEach((button) => {
-            button.addEventListener('click', async () => {
+            card.className = 'history-item';
+            row.className = 'history-row';
+            info.className = 'history-info';
+            title.className = 'history-title';
+            meta.className = 'muted';
+            actions.className = 'history-actions';
+            summary.className = 'muted';
+            summary.style.marginTop = '10px';
+
+            const label = item.owner && item.name ? `${item.owner}/${item.name}` : item.repository_url || 'Unknown repository';
+            title.textContent = label;
+            meta.textContent = `${item.created_at ? new Date(item.created_at).toLocaleString() : 'Unknown date'} • ${item.status || 'Queued'}`;
+            summary.textContent = item.summary || item.error || 'No summary available.';
+
+            open.className = 'ghost-button';
+            open.type = 'button';
+            open.textContent = 'Open';
+            open.dataset.openHistory = item.id;
+            open.addEventListener('click', async () => {
               try {
-                const detail = await fetchJson(`/api/analyze/${button.dataset.openHistory}`);
+                const detail = await fetchJson(`/api/analyze/${item.id}`);
                 state.result = detail.result || null;
                 renderReport(detail);
                 setView('report');
@@ -833,54 +949,100 @@
                 showToast('Open failed', error.message || 'The analysis could not be loaded.', 'error');
               }
             });
-          });
 
-          container.querySelectorAll('[data-delete-history]').forEach((button) => {
-            button.addEventListener('click', async () => {
+            remove.className = 'danger-button';
+            remove.type = 'button';
+            remove.textContent = 'Delete';
+            remove.dataset.deleteHistory = item.id;
+            remove.addEventListener('click', async () => {
               try {
-                await fetchJson(`/api/analyses/${button.dataset.deleteHistory}`, { method: 'DELETE' });
+                await fetchJson(`/api/analyses/${item.id}`, { method: 'DELETE' });
                 showToast('Analysis removed', 'The history item was deleted.', 'success');
                 await loadHistory();
               } catch (error) {
                 showToast('Delete failed', error.message || 'The analysis could not be deleted.', 'error');
               }
             });
+
+            info.appendChild(title);
+            info.appendChild(meta);
+            actions.appendChild(open);
+            actions.appendChild(remove);
+            row.appendChild(info);
+            row.appendChild(actions);
+            card.appendChild(row);
+            card.appendChild(summary);
+            container.appendChild(card);
           });
         } catch (error) {
-          document.getElementById('historyList').innerHTML = '<div class="empty-state">History is unavailable right now.</div>';
+          const container = document.getElementById('historyList');
+          container.replaceChildren();
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.textContent = 'History is unavailable right now.';
+          container.appendChild(empty);
           showToast('History unavailable', error.message || 'Could not load analysis history.', 'error');
         }
       }
 
       function renderSettingsPanel(settings) {
         const panel = document.getElementById('settingsPanel');
+        panel.replaceChildren();
         if (!settings) {
-          panel.innerHTML = '<div class="empty-state">Settings are unavailable right now.</div>';
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.textContent = 'Settings are unavailable right now.';
+          panel.appendChild(empty);
           return;
         }
 
-        const providerRows = Object.entries(settings.providers || {}).map(([name, enabled]) => `
-          <div class="settings-row">
-            <span>${escapeHtml(name)}</span>
-            <span class="${enabled ? 'status-line success' : 'muted'}">${enabled ? 'Configured' : 'Not configured'}</span>
-          </div>
-        `).join('');
+        const providerRows = Object.entries(settings.providers || {}).map(([name, enabled]) => {
+          const row = document.createElement('div');
+          row.className = 'settings-row';
+          const label = document.createElement('span');
+          const value = document.createElement('span');
+          label.textContent = name;
+          value.className = enabled ? 'status-line success' : 'muted';
+          value.textContent = enabled ? 'Configured' : 'Not configured';
+          row.appendChild(label);
+          row.appendChild(value);
+          return row;
+        });
 
-        panel.innerHTML = `
-          <div class="settings-row">
-            <span>GitHub token</span>
-            <span class="${settings.github_token ? 'status-line success' : 'muted'}">${settings.github_token ? 'Available' : 'Not configured'}</span>
-          </div>
-          ${providerRows}
-          <div class="settings-row">
-            <span>Analysis queue</span>
-            <span class="muted">${settings.limits ? settings.limits.max_concurrent_analyses : 0} concurrent / ${settings.limits ? settings.limits.max_pending_analyses : 0} pending</span>
-          </div>
-          <div class="settings-row">
-            <span>Provider priority</span>
-            <span class="muted">${(settings.priority || []).join(' → ') || 'Not available'}</span>
-          </div>
-        `;
+        const githubRow = document.createElement('div');
+        githubRow.className = 'settings-row';
+        const githubLabel = document.createElement('span');
+        const githubValue = document.createElement('span');
+        githubLabel.textContent = 'GitHub token';
+        githubValue.className = settings.github_token ? 'status-line success' : 'muted';
+        githubValue.textContent = settings.github_token ? 'Available' : 'Not configured';
+        githubRow.appendChild(githubLabel);
+        githubRow.appendChild(githubValue);
+
+        const queueRow = document.createElement('div');
+        queueRow.className = 'settings-row';
+        const queueLabel = document.createElement('span');
+        const queueValue = document.createElement('span');
+        queueLabel.textContent = 'Analysis queue';
+        queueValue.className = 'muted';
+        queueValue.textContent = `${settings.limits ? settings.limits.max_concurrent_analyses : 0} concurrent / ${settings.limits ? settings.limits.max_pending_analyses : 0} pending`;
+        queueRow.appendChild(queueLabel);
+        queueRow.appendChild(queueValue);
+
+        const priorityRow = document.createElement('div');
+        priorityRow.className = 'settings-row';
+        const priorityLabel = document.createElement('span');
+        const priorityValue = document.createElement('span');
+        priorityLabel.textContent = 'Provider priority';
+        priorityValue.className = 'muted';
+        priorityValue.textContent = (settings.priority || []).join(' → ') || 'Not available';
+        priorityRow.appendChild(priorityLabel);
+        priorityRow.appendChild(priorityValue);
+
+        panel.appendChild(githubRow);
+        providerRows.forEach((row) => panel.appendChild(row));
+        panel.appendChild(queueRow);
+        panel.appendChild(priorityRow);
       }
 
       async function loadSettings() {

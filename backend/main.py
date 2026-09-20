@@ -141,7 +141,7 @@ async def run_analysis(analysis_id: str, url: str, advanced: AdvancedSettings | 
             selected = await asyncio.to_thread(read_selected, workspace, scan["important_files"])
             system, prompt = build_prompt(repository, scan, selected)
             update_analysis(analysis_id, status="analyzing")
-            result, provider = await generate_analysis(prompt, system)
+            result, provider = await generate_analysis(prompt, system, repository=repository, scan=scan, selected=selected)
             update_analysis(analysis_id, status="validating_result")
             update_analysis(analysis_id, status="completed", score=result["overall_score"], summary=result.get("executive_summary", ""), provider=provider, result_json=json.dumps(result))
     except Exception as error:

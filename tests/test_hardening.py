@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from backend.ai_router import parse_result
+from types import SimpleNamespace
+
+from backend.ai_router import build_repo_fallback_report, parse_result
 from backend.database import create_analysis, get_analysis, init_db, list_analyses
 from backend.prompt_builder import limit_prompt_bytes
 from backend.repo_parser import extract_archive, read_selected
@@ -67,6 +69,21 @@ def test_corrupt_history_result_isolated(tmp_path, monkeypatch):
     database.update_analysis("bad", result_json="{not json")
     assert get_analysis("bad")["result"] is None
     assert len(list_analyses()) == 1
+
+
+def test_partial_json_is_normalized_with_repository_fallback():
+    payload = json.dumps({
+        "repository": {"name": "demo", "owner": "acme", "url": "https://github.com/acme/demo", "description": "Demo app"},
+        "overall_score": 80,
+        "technology_stack": ["FastAPI", "Python"],
+        "limitations": ["Limited evidence"]
+    })
+    result = parse_result(payload)
+    assert result["executive_summary"]
+    assert result["strengths"]
+    assert result["weaknesses"]
+    assert 0 <= result["overall_score"] <= 100
+    assert result["repository"]["name"] == "demo"
 
 
 def test_frontend_uses_safe_dom_apis():
