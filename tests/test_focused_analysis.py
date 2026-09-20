@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from backend.focused_analysis import build_excerpt, enrich_focused_result
+from backend.focused_analysis import build_excerpt, enrich_focused_result, normalize_repository_type
 
 
 def repository():
@@ -81,3 +81,10 @@ def test_enrich_attaches_repository_and_structure():
     assert enriched["structure"]["file_count"] == 3
     assert enriched["structure"]["languages"] == {"Python": 2}
     assert enriched["evidence"] == []
+
+
+def test_normalize_repository_type_accepts_frontend_legacy_values():
+    assert normalize_repository_type("technology") == "Technology"
+    assert normalize_repository_type("AI / ML") == "AI / Machine Learning"
+    assert normalize_repository_type("Auto Detect") == "Auto Detect"
+    assert normalize_repository_type("  full stack  ") == "Full Stack"

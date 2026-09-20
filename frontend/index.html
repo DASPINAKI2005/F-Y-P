@@ -448,18 +448,26 @@
       ];
 
       const ARCHETYPES = [
-        { label: 'Technology / Core', value: 'technology' },
-        { label: 'Web App', value: 'web_app' },
-        { label: 'REST / API', value: 'api' },
-        { label: 'AI / ML', value: 'ai_ml' },
-        { label: 'Medical / High-Assurance', value: 'medical' },
-        { label: 'CLI / System Tool', value: 'cli' }
+        { label: 'Auto Detect', value: 'Auto Detect' },
+        { label: 'Technology', value: 'Technology' },
+        { label: 'AI / Machine Learning', value: 'AI / Machine Learning' },
+        { label: 'Frontend', value: 'Frontend' },
+        { label: 'Backend', value: 'Backend' },
+        { label: 'Full Stack', value: 'Full Stack' },
+        { label: 'Mobile', value: 'Mobile' },
+        { label: 'DevOps / Cloud', value: 'DevOps / Cloud' },
+        { label: 'Data / Analytics', value: 'Data / Analytics' },
+        { label: 'Security', value: 'Security' },
+        { label: 'Medical / Healthcare', value: 'Medical / Healthcare' },
+        { label: 'Education', value: 'Education' },
+        { label: 'Finance', value: 'Finance' },
+        { label: 'Other', value: 'Other' }
       ];
 
       const state = {
         currentView: 'analyze',
         repository: '',
-        selectedArchetype: 'web_app',
+        selectedArchetype: 'Auto Detect',
         selectedScope: 'targeted',
         analysisId: null,
         poller: null,

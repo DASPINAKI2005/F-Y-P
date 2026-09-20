@@ -68,7 +68,7 @@ def _text(response, extractor):
         raise ProviderError("Provider returned an empty response", "invalid_response")
     return text
 
-PROVIDERS = [GeminiProvider(), GroqProvider(), OpenRouterProvider(), HuggingFaceProvider()]
+PROVIDERS = [OpenRouterProvider(), GeminiProvider(), GroqProvider(), HuggingFaceProvider()]
 provider_priority = [provider.name for provider in PROVIDERS]
 
 def configured_providers():

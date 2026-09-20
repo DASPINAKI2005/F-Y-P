@@ -21,6 +21,57 @@ REPOSITORY_TYPES = (
     "Other",
 )
 
+_REPOSITORY_TYPE_ALIASES = {
+    "auto detect": "Auto Detect",
+    "auto-detect": "Auto Detect",
+    "technology": "Technology",
+    "technology / core": "Technology",
+    "web app": "Frontend",
+    "web_app": "Frontend",
+    "frontend": "Frontend",
+    "rest / api": "Backend",
+    "api": "Backend",
+    "backend": "Backend",
+    "full stack": "Full Stack",
+    "full-stack": "Full Stack",
+    "mobile": "Mobile",
+    "devops / cloud": "DevOps / Cloud",
+    "devops": "DevOps / Cloud",
+    "cloud": "DevOps / Cloud",
+    "data / analytics": "Data / Analytics",
+    "data": "Data / Analytics",
+    "analytics": "Data / Analytics",
+    "security": "Security",
+    "medical / high-assurance": "Medical / Healthcare",
+    "medical": "Medical / Healthcare",
+    "healthcare": "Medical / Healthcare",
+    "education": "Education",
+    "finance": "Finance",
+    "other": "Other",
+    "ai / ml": "AI / Machine Learning",
+    "ai / machine learning": "AI / Machine Learning",
+    "ai_ml": "AI / Machine Learning",
+    "ai ml": "AI / Machine Learning",
+    "cli / system tool": "Technology",
+    "cli": "Technology",
+    "system tool": "Technology",
+}
+
+
+def normalize_repository_type(value: str | None) -> str:
+    if value is None:
+        return "Auto Detect"
+    normalized = str(value).strip()
+    if not normalized:
+        return "Auto Detect"
+    direct = _REPOSITORY_TYPE_ALIASES.get(normalized.lower())
+    if direct:
+        return direct
+    for canonical in REPOSITORY_TYPES:
+        if normalized.lower() == canonical.lower():
+            return canonical
+    return "Auto Detect"
+
 STOPWORDS = {
     "a", "an", "the", "and", "or", "but", "is", "are", "am", "was", "were", "be",
     "been", "being", "does", "do", "did", "have", "has", "had", "this", "that",

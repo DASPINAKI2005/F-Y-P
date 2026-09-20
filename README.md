@@ -36,7 +36,7 @@ Applying the selected repository type requires a question; the type only guides 
 
 ## AI fallback
 
-Providers are attempted in this order: Gemini, Groq, OpenRouter, Hugging Face. Unconfigured providers are skipped. HTTP rate limits, transient failures, network errors, empty output, malformed JSON, and schema failures advance to the next configured provider. Raw keys and authorization headers are never logged.
+Providers are attempted in this order: OpenRouter, Gemini, Groq, Hugging Face. Unconfigured providers are skipped. HTTP rate limits, transient failures, network errors, empty output, malformed JSON, and schema failures advance to the next configured provider. Raw keys and authorization headers are never logged.
 
 ## Security model
 

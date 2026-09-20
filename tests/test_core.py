@@ -2,6 +2,7 @@ import io
 import tarfile
 from pathlib import Path
 import pytest
+from backend.ai_router import provider_priority
 from backend.repo_parser import extract_archive, rank_important
 from backend.security import parse_github_url, safe_join, workspace_for
 
@@ -30,3 +31,7 @@ def test_importance_ranking():
 
 def test_workspace_is_deterministic():
     assert workspace_for("a", "b", "main") == workspace_for("a", "b", "main")
+
+
+def test_provider_priority_prefers_working_backend():
+    assert provider_priority[0] == "OpenRouter"

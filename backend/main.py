@@ -14,7 +14,7 @@ from pydantic import BaseModel, HttpUrl
 from .ai_router import configured_providers, generate_analysis, parse_focused_result, provider_priority, set_provider_priority
 from .config import FRONTEND_ROOT, WORKSPACE_ROOT, settings
 from .database import create_analysis, delete_analysis, get_analysis, init_db, list_analyses, update_analysis
-from .focused_analysis import REPOSITORY_TYPES, build_focused_prompt, discover_candidates, enrich_focused_result, read_evidence
+from .focused_analysis import REPOSITORY_TYPES, build_focused_prompt, discover_candidates, enrich_focused_result, normalize_repository_type, read_evidence
 from .github_service import GitHubService
 from .prompt_builder import build_prompt
 from .repo_parser import extract_archive, read_selected, scan_repository
@@ -83,8 +83,10 @@ async def analyze(request: AnalyzeRequest, tasks: BackgroundTasks):
             raise HTTPException(400, "A question is required when Advanced Analysis is enabled.")
         if len(question) > 2000:
             raise HTTPException(400, "The question must be 2000 characters or fewer.")
-        if request.advanced.repository_type not in REPOSITORY_TYPES:
+        normalized_type = normalize_repository_type(request.advanced.repository_type)
+        if normalized_type not in REPOSITORY_TYPES:
             raise HTTPException(400, f"Repository type must be one of: {', '.join(REPOSITORY_TYPES)}.")
+        request.advanced.repository_type = normalized_type
         advanced = request.advanced
     global _active_jobs
     async with _job_lock:
@@ -124,7 +126,7 @@ async def run_analysis(analysis_id: str, url: str, advanced: AdvancedSettings | 
         if advanced is not None:
             update_analysis(analysis_id, status="interpreting")
             question = advanced.question.strip()
-            repository_type = advanced.repository_type or "Auto Detect"
+            repository_type = normalize_repository_type(advanced.repository_type or "Auto Detect")
             update_analysis(analysis_id, status="discovering")
             discovery = await asyncio.to_thread(discover_candidates, workspace, scan, question, repository_type)
             update_analysis(analysis_id, status="extracting_evidence")
@@ -198,6 +200,7 @@ async def update_priority(request: PriorityRequest):
     return {"priority": provider_priority}
 
 app.mount("/static", StaticFiles(directory=FRONTEND_ROOT), name="static")
+app.mount("/assets", StaticFiles(directory=FRONTEND_ROOT / "assets"), name="assets")
 
 @app.get("/{page}.html")
 async def page(page: str):
