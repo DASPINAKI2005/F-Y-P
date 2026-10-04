@@ -1,8 +1,12 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
+*.log
 .pytest_cache/
 .venv/
 db/analyzer.db
 db/workspaces/*
 !db/workspaces/.gitkeep
+/models/gemma-3-1b-it/

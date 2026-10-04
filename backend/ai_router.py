@@ -1,85 +1,43 @@
 import json
 import logging
 import math
-import time
-import httpx
-from .config import settings
+from .local_ai import LocalAIClient, LocalAIError
 
 logger = logging.getLogger(__name__)
 
-class ProviderError(Exception):
-    def __init__(self, message: str, category: str = "provider_error", status: int | None = None):
+
+def _safe_debug_snippet(raw: str | None, limit: int = 500) -> str:
+    value = str(raw or "")
+    return value[:limit]
+
+
+def _safe_debug_suffix(raw: str | None, limit: int = 200) -> str:
+    value = str(raw or "")
+    if len(value) <= limit:
+        return value
+    return value[-limit:]
+
+
+def _log_local_ai_parse_failure(provider: str, attempt: int, raw: str | None, reason: str) -> None:
+    value = raw or ""
+    preview = _safe_debug_snippet(value)
+    suffix = _safe_debug_suffix(value)
+    logger.warning(
+        "local_ai_json_parse_failed provider=%s attempt=%s length=%s preview=%r suffix=%r reason=%s",
+        provider,
+        attempt,
+        len(value),
+        preview,
+        suffix,
+        reason,
+    )
+
+class AnalysisResponseError(Exception):
+    def __init__(self, message: str, category: str = "invalid_response"):
         super().__init__(message)
-        self.category, self.status = category, status
+        self.category = category
 
-class AIProvider:
-    name = ""
-    key = ""
-    async def generate(self, prompt: str, system: str) -> str:
-        raise NotImplementedError
-
-class GeminiProvider(AIProvider):
-    name, key = "Gemini", "gemini_api_key"
-    async def generate(self, prompt, system):
-        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-        body = {"system_instruction": {"parts": [{"text": system}]}, "contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json"}}
-        async with httpx.AsyncClient(timeout=75) as client:
-            response = await client.post(url, params={"key": settings.gemini_api_key}, json=body)
-        return _text(response, lambda data: data["candidates"][0]["content"]["parts"][0]["text"])
-
-class GroqProvider(AIProvider):
-    name, key = "Groq", "groq_api_key"
-    async def generate(self, prompt, system):
-        return await _openai_compatible("https://api.groq.com/openai/v1/chat/completions", settings.groq_api_key, "llama-3.3-70b-versatile", prompt, system)
-
-class OpenRouterProvider(AIProvider):
-    name, key = "OpenRouter", "openrouter_api_key"
-    async def generate(self, prompt, system):
-        return await _openai_compatible("https://openrouter.ai/api/v1/chat/completions", settings.openrouter_api_key, "openai/gpt-4o-mini", prompt, system)
-
-class HuggingFaceProvider(AIProvider):
-    name, key = "Hugging Face", "hf_token"
-    async def generate(self, prompt, system):
-        headers = {"Authorization": f"Bearer {settings.hf_token}"}
-        body = {"inputs": f"{system}\n\n{prompt}", "parameters": {"max_new_tokens": 3000, "return_full_text": False}}
-        async with httpx.AsyncClient(timeout=90) as client:
-            response = await client.post("https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-72B-Instruct", headers=headers, json=body)
-        return _text(response, lambda data: data[0]["generated_text"] if isinstance(data, list) else data["generated_text"])
-
-async def _openai_compatible(url, key, model, prompt, system):
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    body = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}], "response_format": {"type": "json_object"}}
-    async with httpx.AsyncClient(timeout=75) as client:
-        response = await client.post(url, headers=headers, json=body)
-    return _text(response, lambda data: data["choices"][0]["message"]["content"])
-
-def _text(response, extractor):
-    if response.status_code == 429:
-        raise ProviderError("Provider rate limited", "rate_limit", response.status_code)
-    if response.status_code >= 500:
-        raise ProviderError("Provider unavailable", "temporary", response.status_code)
-    if response.status_code >= 400:
-        raise ProviderError("Provider request rejected", "request_error", response.status_code)
-    try:
-        text = extractor(response.json()).strip()
-    except (KeyError, IndexError, TypeError, ValueError) as error:
-        raise ProviderError("Provider returned an unexpected response", "invalid_response") from error
-    if not text:
-        raise ProviderError("Provider returned an empty response", "invalid_response")
-    return text
-
-PROVIDERS = [OpenRouterProvider(), GeminiProvider(), GroqProvider(), HuggingFaceProvider()]
-provider_priority = [provider.name for provider in PROVIDERS]
-
-def configured_providers():
-    by_name = {provider.name: provider for provider in PROVIDERS}
-    return [by_name[name] for name in provider_priority if getattr(settings, by_name[name].key)]
-
-def set_provider_priority(names: list[str]) -> None:
-    available = {provider.name for provider in PROVIDERS}
-    if set(names) != available or len(names) != len(available):
-        raise ValueError("Priority must contain each supported provider exactly once.")
-    provider_priority[:] = names
+local_ai = LocalAIClient()
 
 def _coerce_string_list(value):
     if isinstance(value, list):
@@ -211,12 +169,17 @@ def build_repo_fallback_report(repository, scan, selected):
 
 def _normalize_result(result, repository=None, scan=None, selected=None):
     if not isinstance(result, dict):
-        raise ProviderError("AI response did not match the analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the analysis schema", "invalid_schema")
     fallback = build_repo_fallback_report(repository, scan, selected)
+    if result.get("summary") and not result.get("executive_summary"):
+        result["executive_summary"] = str(result["summary"])
+    if result.get("executive_summary") and not result.get("summary"):
+        result["summary"] = str(result["executive_summary"])
     result.setdefault("repository", _fallback_repository_payload(repository))
     if not result["repository"]:
         result["repository"] = _fallback_repository_payload(repository)
     result.setdefault("executive_summary", "")
+    result.setdefault("summary", result["executive_summary"])
     result.setdefault("project_purpose", "")
     result.setdefault("technology_stack", [])
     result.setdefault("architecture", {"type": "", "description": ""})
@@ -260,6 +223,7 @@ def _normalize_result(result, repository=None, scan=None, selected=None):
     result["repository"] = result.get("repository") or _fallback_repository_payload(repository)
     if not result["executive_summary"]:
         result["executive_summary"] = fallback["executive_summary"]
+    result["summary"] = result.get("summary") or result["executive_summary"]
     if not result.get("project_purpose"):
         result["project_purpose"] = fallback["project_purpose"]
     if not isinstance(result.get("architecture"), dict):
@@ -271,13 +235,13 @@ def _normalize_result(result, repository=None, scan=None, selected=None):
         result["architecture"] = architecture
     score = result.get("overall_score")
     if isinstance(score, bool):
-        raise ProviderError("AI response did not match the analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the analysis schema", "invalid_schema")
     try:
         numeric_score = float(score)
     except (TypeError, ValueError) as error:
-        raise ProviderError("AI response did not match the analysis schema", "invalid_schema") from error
+        raise AnalysisResponseError("Local AI response did not match the analysis schema", "invalid_schema") from error
     if not math.isfinite(numeric_score):
-        raise ProviderError("AI response did not match the analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the analysis schema", "invalid_schema")
     result["overall_score"] = max(0, min(100, int(numeric_score)))
     result.setdefault("confidence", fallback["confidence"])
     if not result["confidence"]:
@@ -285,12 +249,78 @@ def _normalize_result(result, repository=None, scan=None, selected=None):
     return result
 
 
-def parse_result(raw: str) -> dict:
-    cleaned = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+def _strip_json_fence(text: str) -> str:
+    cleaned = text.strip().removeprefix("\ufeff")
+    if "```" not in cleaned:
+        return cleaned
+    first_fence = cleaned.find("```")
+    if first_fence == -1:
+        return cleaned
+    after_fence = cleaned[first_fence + 3 :].lstrip()
+    if after_fence.lower().startswith("json"):
+        after_fence = after_fence[4:].lstrip()
+    closing = after_fence.find("```")
+    if closing == -1:
+        return cleaned
+    candidate = after_fence[:closing].strip()
+    if candidate:
+        return candidate
+    return cleaned
+
+
+def _extract_json_object(text: str) -> str:
+    start = text.find("{")
+    if start == -1:
+        raise AnalysisResponseError("Local AI returned malformed JSON: no JSON object found.", "invalid_json")
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    raise AnalysisResponseError("Local AI returned malformed JSON: unmatched object braces.", "invalid_json")
+
+
+def _decode_json_object(raw: str):
+    if raw is None:
+        raise AnalysisResponseError("Local AI returned an empty response.", "empty_response")
+    cleaned = str(raw).strip().removeprefix("\ufeff")
+    if not cleaned:
+        raise AnalysisResponseError("Local AI returned an empty response.", "empty_response")
+    cleaned = _strip_json_fence(cleaned)
+    if not cleaned:
+        raise AnalysisResponseError("Local AI returned an empty response.", "empty_response")
     try:
-        result = json.loads(cleaned)
+        return json.loads(cleaned)
     except json.JSONDecodeError as error:
-        raise ProviderError("AI response was not valid JSON", "invalid_json") from error
+        if "{" not in cleaned:
+            raise AnalysisResponseError("Local AI returned malformed JSON: no JSON object found.", "invalid_json") from error
+        try:
+            candidate = _extract_json_object(cleaned)
+            return json.loads(candidate)
+        except AnalysisResponseError:
+            raise
+        except json.JSONDecodeError as decode_error:
+            raise AnalysisResponseError(f"Local AI returned malformed JSON: {decode_error.msg} at column {decode_error.colno}.", "invalid_json") from decode_error
+
+
+def parse_result(raw: str) -> dict:
+    result = _decode_json_object(raw)
     return _normalize_result(result)
 
 FOCUSED_STATUS_ALIASES = {
@@ -303,20 +333,18 @@ FOCUSED_STATUS_ALIASES = {
 FOCUSED_STRENGTHS = {"strong", "moderate", "weak", "insufficient"}
 
 def parse_focused_result(raw: str) -> dict:
-    cleaned = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    try:
-        result = json.loads(cleaned)
-    except json.JSONDecodeError as error:
-        raise ProviderError("AI response was not valid JSON", "invalid_json") from error
+    result = _decode_json_object(raw)
+    if not isinstance(result, dict):
+        raise AnalysisResponseError("Local AI response did not match the focused analysis schema", "invalid_schema")
     required = {"status", "answer", "evidence", "evidence_strength"}
     if not required.issubset(result):
-        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the focused analysis schema", "invalid_schema")
     status = FOCUSED_STATUS_ALIASES.get(str(result.get("status", "")).strip().lower().replace(" ", "_"))
     if status is None:
-        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the focused analysis schema", "invalid_schema")
     strength = str(result.get("evidence_strength", "")).strip().lower()
     if strength not in FOCUSED_STRENGTHS:
-        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the focused analysis schema", "invalid_schema")
     evidence = []
     raw_evidence = result.get("evidence")
     if isinstance(raw_evidence, list):
@@ -336,32 +364,43 @@ def parse_focused_result(raw: str) -> dict:
         "evidence_strength": strength,
     }
     if not normalized["answer"]:
-        raise ProviderError("AI response did not match the focused analysis schema", "invalid_schema")
+        raise AnalysisResponseError("Local AI response did not match the focused analysis schema", "invalid_schema")
     return normalized
 
 async def generate_analysis(prompt: str, system: str, parse=None, repository=None, scan=None, selected=None) -> tuple[dict, str]:
     processor = parse or parse_result
-    errors = []
-    for attempt, provider in enumerate(configured_providers(), 1):
-        started = time.perf_counter()
+    retry_system = system
+    for attempt in range(1, 3):
+        current_system = retry_system if attempt == 1 else f"{retry_system}\nReturn only one valid JSON object and no explanations. Correct the previous malformed output and do not include markdown fences."
         try:
-            raw = await provider.generate(prompt, system)
+            raw = await local_ai.generate(prompt if attempt == 1 else prompt + "\nYour previous response was invalid JSON. Return only a valid JSON object and nothing else.", current_system)
             result = processor(raw)
             result = _normalize_result(result, repository, scan, selected)
-            result["provider"] = provider.name
-            result["source"] = "provider_response"
-            logger.info("ai_provider_success provider=%s attempt=%s duration_ms=%s", provider.name, attempt, int((time.perf_counter() - started) * 1000))
-            return result, provider.name
-        except (ProviderError, httpx.HTTPError) as error:
-            category = getattr(error, "category", "network")
-            errors.append(f"{provider.name}: {category}")
-            logger.warning("ai_provider_failure provider=%s attempt=%s category=%s", provider.name, attempt, category)
-    if repository is not None:
-        fallback = build_repo_fallback_report(repository, scan, selected)
-        fallback["provider"] = "local_repository_fallback"
-        fallback["source"] = "repository_scan_fallback"
-        logger.warning("ai_provider_fallback_used repository=%s/%s", getattr(repository, "owner", ""), getattr(repository, "name", ""))
-        return fallback, "local_repository_fallback"
-    if not configured_providers():
-        raise RuntimeError("No AI provider configured. Add at least one provider key to .env.")
-    raise RuntimeError("All configured AI providers failed: " + ", ".join(errors))
+            result["provider"] = "Local AI"
+            result["source"] = "local_model_response"
+            return result, "Local AI"
+        except AnalysisResponseError as error:
+            _log_local_ai_parse_failure("gemma", attempt, raw if 'raw' in locals() else None, str(error))
+            if attempt == 1:
+                continue
+            fallback = build_repo_fallback_report(repository, scan, selected)
+            fallback["provider"] = "Local AI fallback"
+            fallback["source"] = "local_fallback"
+            if not fallback.get("summary") and fallback.get("executive_summary"):
+                fallback["summary"] = fallback["executive_summary"]
+            logger.warning("local_ai_fallback provider=gemma attempts=%s reason=%s", attempt, error)
+            return fallback, "Local AI fallback"
+        except LocalAIError as error:
+            if "empty response" not in str(error).lower() and "invalid analysis response" not in str(error).lower() and "malformed" not in str(error).lower():
+                raise
+            _log_local_ai_parse_failure("gemma", attempt, None, str(error))
+            if attempt == 1:
+                continue
+            fallback = build_repo_fallback_report(repository, scan, selected)
+            fallback["provider"] = "Local AI fallback"
+            fallback["source"] = "local_fallback"
+            if not fallback.get("summary") and fallback.get("executive_summary"):
+                fallback["summary"] = fallback["executive_summary"]
+            logger.warning("local_ai_fallback provider=gemma attempts=%s reason=%s", attempt, error)
+            return fallback, "Local AI fallback"
+    raise LocalAIError("Local AI returned an invalid analysis response. Please retry the analysis.")

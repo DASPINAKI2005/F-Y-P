@@ -1,57 +1,112 @@
 # GitHub Repo Analyzer
 
-A local-first FastAPI application for understanding public GitHub repositories through safe static analysis and automatic AI provider fallback.
+A local-first FastAPI application for safe GitHub repository analysis using a project-local Gemma model and source-backed review.
 
-## Features
+## AI model
 
-- Public GitHub URL validation and REST archive downloads; Git is not required.
-- Zip-slip/path traversal protection, archive member/extraction/file/prompt limits, ignored binary/vendor paths, and common secret redaction.
-- Technology and framework detection, repository structure inventory, important-file ranking, and staged evidence prompts.
-- Provider-neutral adapters for Gemini, Groq, OpenRouter, and Hugging Face with automatic fallback and normalized JSON validation.
-- SQLite history with status, score, summary, provider, and full normalized report.
-- Responsive vanilla HTML/CSS/JavaScript interface served by FastAPI.
-
-## Run locally
-
-1. Install Python 3.11 or newer.
-2. Create and activate a virtual environment.
-3. Install dependencies: `python -m pip install -r requirements.txt`
-4. Copy `.env.example` to `.env` and configure at least one AI provider key.
-5. Start the app: `python run.py`
-6. Open http://127.0.0.1:8000.
-
-A GitHub token is optional for public repositories, but useful for higher API limits. Keys are backend-only and never sent to the browser.
-
-## Advanced analysis
-
-Alongside the standard repository report, the analyzer can answer one specific question about a repository. Enable **Advanced analysis**, choose a repository type, and ask a question such as *"Where is authentication implemented?"*.
-
-Focused runs add two stages: candidate files are ranked against the concepts in your question, then the model must answer using only that evidence. Every citation is re-opened afterwards, the real excerpt and line range are extracted from the file that exists on disk, and citations that cannot be verified are discarded. Answers are labelled `implemented`, `partial`, `referenced_only`, `not_found`, or `uncertain`, and rated `strong`, `moderate`, `weak`, or `insufficient`.
-
-Applying the selected repository type requires a question; the type only guides ranking and interpretation.
+- Model: Google Gemma 3 1B IT
+- Model ID: `google/gemma-3-1b-it`
+- Inference: Local
 
 ## Architecture
 
-`backend/main.py` owns HTTP endpoints and the bounded background analysis lifecycle. `github_service.py` handles GitHub acquisition. `repo_parser.py` performs static scanning without executing repository content. `prompt_builder.py` creates UTF-8 byte-bounded evidence context. `ai_router.py` contains independent provider adapters and fallback routing. `database.py` stores metadata and results in SQLite. Development data lives in `db/`; frozen PyInstaller builds use a persistent per-user `GitHubRepoAnalyzer` data directory (`%APPDATA%` on Windows).
+```text
+GitHub Repository
+      ↓
+Safe Repository Acquisition
+      ↓
+Static Analysis
+      ↓
+Relevant Code / Context
+      ↓
+Local Gemma 3 1B IT
+      ↓
+Analysis Result
+      ↓
+Existing Application UI
+```
 
-## AI fallback
+The analysis pipeline acquires a repository archive, inspects it safely without executing code, ranks the most relevant files, and then sends a bounded prompt to the local Gemma model for reasoning.
 
-Providers are attempted in this order: OpenRouter, Gemini, Groq, Hugging Face. Unconfigured providers are skipped. HTTP rate limits, transient failures, network errors, empty output, malformed JSON, and schema failures advance to the next configured provider. Raw keys and authorization headers are never logged.
+## Local model location
 
-## Security model
+```text
+models/gemma-3-1b-it/
+```
 
-Repositories are untrusted data. The application never runs source code, package managers, Makefiles, Dockerfiles, workflows, or setup scripts. Archive members are resolved under a deterministic workspace and rejected if they escape it. Files are bounded and filtered before selected source context is transmitted to an AI provider. Repository text is explicitly framed as evidence, not instructions, to reduce prompt injection risk.
+This is the canonical local checkout directory for the project. The app resolves the model from this location and does not depend on any external removable drive.
 
-## Packaging
+## Setup
 
-The application has no Node.js, Git, Docker, database server, or system package-manager runtime requirement. A Windows launcher can run `python run.py`; standalone executables can be produced with PyInstaller using the included `packaging.spec` after installing `pyinstaller` in a build environment.
+1. Clone the repository.
+2. Create or activate a Python virtual environment.
+3. Install dependencies:
 
-## Tests
+```bash
+python -m pip install -r requirements.txt
+```
 
-Run `python -m pytest tests -q`. The tests cover URL parsing, traversal protection, archive extraction, importance ranking, deterministic workspaces, focused-analysis evidence enrichment, and SQLite persistence. Live provider and GitHub calls are intentionally not part of the unit suite.
+4. Authenticate with Hugging Face if required by access policies for the model.
+5. Accept the applicable Gemma terms and access requirements.
+6. Download the model:
 
-Pass the `tests` path explicitly: a bare `python -m pytest -q` also collects example projects under `db/workspaces/`, which are downloaded repositories and not part of the test suite.
+```bash
+python scripts/download_model.py
+```
 
-## Limitations and future work
+7. Verify the local model exists under:
 
-The MVP uses GitHub REST for metadata/archive acquisition; GraphQL and Code Search are intentionally optional extension points rather than mandatory calls. It does not execute code or provide account management. Successful workspaces are retained as local cache; failed workspaces are removed, and deleting an analysis removes its deterministic workspace. On restart, interrupted non-terminal jobs are marked failed rather than polled forever. The application remains local-only by default and binds to `127.0.0.1`.
+```text
+models/gemma-3-1b-it/
+```
+
+8. Start the app:
+
+```bash
+python run.py
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+## Key components
+
+- `backend/main.py` handles the FastAPI app and analysis lifecycle.
+- `backend/github_service.py` validates GitHub URLs and downloads repository archives.
+- `backend/repo_parser.py` performs safe static extraction and analysis.
+- `backend/prompt_builder.py` assembles the evidence-backed prompt.
+- `backend/local_ai.py` loads the local Gemma model from `models/gemma-3-1b-it`.
+- `scripts/download_model.py` downloads the required model files to the local project directory.
+
+## Security and safety
+
+Repository content is treated as untrusted input. The app never executes project code from the repository, and extracted files are filtered and bounded before they are included in prompts.
+
+## License and third-party notices
+
+This repository includes third-party model notice documentation:
+
+- `NOTICE`
+- `docs/THIRD_PARTY_LICENSES.md`
+
+Official Gemma documentation and terms:
+
+- Google Gemma Terms of Use: https://ai.google.dev/gemma/terms
+- Google Gemma Prohibited Use Policy: https://ai.google.dev/gemma/terms#prohibited-use-policy
+
+Gemma is used under the applicable Gemma Terms of Use.
+
+## Testing
+
+Run the project test suite with:
+
+```bash
+python -m pytest tests -q
+```
+
+## Repository strategy
+
+The project keeps the application source, model download script, and licensing notices in Git while leaving the downloaded model weights local to the machine under `models/gemma-3-1b-it/`.

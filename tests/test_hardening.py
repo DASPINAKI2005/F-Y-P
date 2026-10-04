@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import tarfile
@@ -84,6 +85,78 @@ def test_partial_json_is_normalized_with_repository_fallback():
     assert result["weaknesses"]
     assert 0 <= result["overall_score"] <= 100
     assert result["repository"]["name"] == "demo"
+
+
+def test_parse_result_accepts_realistic_local_model_outputs():
+    payload = '''Here is the analysis:
+```json
+{
+  "summary": "Project uses {FastAPI} and \\\"good\\\" docs.",
+  "weaknesses": ["Missing coverage"],
+  "details": [{"path": "app/main.py", "reason": "Core logic"}],
+  "improvements": ["Add tests"]
+}
+```
+Hope this helps.'''
+    result = parse_result(payload)
+    assert result["executive_summary"] == 'Project uses {FastAPI} and "good" docs.'
+    assert result["weaknesses"] == ["Missing coverage"]
+    assert result["strengths"]
+
+
+def test_parse_result_rejects_empty_and_invalid_model_output():
+    with pytest.raises(Exception, match="empty response|valid JSON|malformed JSON"):
+        parse_result("   \n\t  ")
+    with pytest.raises(Exception, match="valid JSON|malformed JSON"):
+        parse_result("Random prose without any JSON object.")
+
+
+def test_generate_analysis_retries_once_and_uses_local_success():
+    from backend.ai_router import generate_analysis
+
+    calls = []
+
+    async def fake_generate(prompt, system):
+        calls.append((prompt, system))
+        if len(calls) == 1:
+            return '```json\n{"summary": "bad value", "weaknesses": []\n```'
+        return json.dumps({
+            "repository": {"name": "demo", "owner": "acme", "url": "https://github.com/acme/demo", "description": "Demo app"},
+            "summary": "OK summary",
+            "weaknesses": ["Minor issue"],
+            "overall_score": 91,
+            "limitations": []
+        })
+
+    import backend.ai_router as ai_router
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(ai_router.local_ai, "generate", fake_generate)
+    try:
+        result, provider = asyncio.run(generate_analysis("prompt", "system", repository=SimpleNamespace(name="demo", owner="acme", url="https://github.com/acme/demo", description="Demo app"), scan={}, selected=[]))
+    finally:
+        monkeypatch.undo()
+    assert provider == "Local AI"
+    assert len(calls) == 2
+    assert result["summary"] == "OK summary"
+    assert result["overall_score"] == 91
+
+
+def test_generate_analysis_falls_back_when_local_model_keeps_failing():
+    from backend.ai_router import generate_analysis
+
+    async def fake_generate(prompt, system):
+        return "This is not JSON at all."
+
+    import backend.ai_router as ai_router
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(ai_router.local_ai, "generate", fake_generate)
+    try:
+        result, provider = asyncio.run(generate_analysis("prompt", "system", repository=SimpleNamespace(name="demo", owner="acme", url="https://github.com/acme/demo", description="Demo app"), scan={}, selected=[]))
+    finally:
+        monkeypatch.undo()
+    assert provider == "Local AI fallback"
+    assert result["executive_summary"]
+    assert result["weaknesses"]
 
 
 def test_frontend_uses_safe_dom_apis():

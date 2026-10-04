@@ -3,3 +3,9 @@ uvicorn[standard]==0.34.0
 httpx==0.28.1
 pydantic-settings==2.15.0
 python-dotenv==1.0.0
+transformers==4.45.2; python_version < "3.13"
+transformers>=4.50.0,<5; python_version >= "3.13"
+torch==2.5.1; python_version < "3.13"
+torch>=2.6.0,<3; python_version >= "3.13"
+huggingface_hub==0.26.2; python_version < "3.13"
+huggingface_hub>=0.34.0,<1; python_version >= "3.13"

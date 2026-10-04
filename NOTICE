@@ -1,0 +1,14 @@
+This project uses Google Gemma 3 1B IT, model identifier google/gemma-3-1b-it, for local repository analysis and summarization.
+
+Gemma is used under the applicable Gemma Terms of Use. The official terms are available here:
+https://ai.google.dev/gemma/terms
+
+The applicable Gemma Prohibited Use Policy is available here:
+https://ai.google.dev/gemma/terms#prohibited-use-policy
+
+This project downloads and runs the model locally on the user's machine from the project-local directory:
+models/gemma-3-1b-it/
+
+The model weights are not distributed as part of this repository and should be obtained through the supported model download flow described in the project documentation. Users are responsible for reviewing the relevant model terms, access requirements, and any platform or distribution requirements that apply to their environment.
+
+This notice is informational only and does not constitute legal advice or a guarantee of compliance.

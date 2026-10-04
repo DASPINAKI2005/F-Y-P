@@ -70,16 +70,17 @@ def scan_repository(root: Path) -> dict:
     frameworks = detect_frameworks(root, files)
     return {"file_count": len(files), "directory_count": len(directories), "total_size": total_size, "extensions": dict(extensions), "languages": dict(languages), "frameworks": frameworks, "top_level": sorted({item.split("/")[0] for item in [f["path"] for f in files]}), "files": files, "important_files": rank_important(files, important), "readmes": [f["path"] for f in files if "readme" in f["path"].lower()]}
 
-def read_selected(root: Path, paths: list[str], limit: int = 24) -> list[dict]:
+def read_selected(root: Path, paths: list[str], limit: int | None = None) -> list[dict]:
     selected = []
-    for relative in paths[:limit]:
+    maximum_files = limit if limit is not None else settings.local_ai_max_files
+    for relative in paths[:maximum_files]:
         path = safe_join(root, relative)
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
         text = redact_secrets(text)
-        selected.append({"path": relative, "content": text[:12000]})
+        selected.append({"path": relative, "content": text[:settings.local_ai_max_file_chars]})
     return selected
 
 def redact_secrets(text: str) -> str:

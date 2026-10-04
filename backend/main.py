@@ -11,7 +11,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
-from .ai_router import configured_providers, generate_analysis, parse_focused_result, provider_priority, set_provider_priority
+from .ai_router import generate_analysis, local_ai, parse_focused_result
 from .config import FRONTEND_ROOT, WORKSPACE_ROOT, settings
 from .database import create_analysis, delete_analysis, get_analysis, init_db, list_analyses, update_analysis
 from .focused_analysis import REPOSITORY_TYPES, build_focused_prompt, discover_candidates, enrich_focused_result, normalize_repository_type, read_evidence
@@ -31,7 +31,12 @@ _workspace_locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 async def lifespan(app: FastAPI):
     init_db()
     WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
-    yield
+    if not await local_ai.start_server():
+        logger.warning("local_ai_not_ready message=%s", local_ai.last_error)
+    try:
+        yield
+    finally:
+        await local_ai.stop_server()
 
 app = FastAPI(title="GitHub Repo Analyzer", version="1.0.0", lifespan=lifespan)
 
@@ -55,12 +60,9 @@ class AnalyzeRequest(BaseModel):
     url: HttpUrl
     advanced: AdvancedSettings | None = None
 
-class PriorityRequest(BaseModel):
-    priority: list[str]
-
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "providers_configured": [provider.name for provider in configured_providers()]}
+    return {"status": "ok"}
 
 @app.post("/api/repositories/validate")
 async def validate_repository(request: RepositoryRequest):
@@ -189,15 +191,19 @@ async def remove_analysis(analysis_id: str):
 
 @app.get("/api/settings/status")
 async def settings_status():
-    return {"providers": {"Gemini": bool(settings.gemini_api_key), "Groq": bool(settings.groq_api_key), "OpenRouter": bool(settings.openrouter_api_key), "Hugging Face": bool(settings.hf_token)}, "github_token": bool(settings.github_token), "limits": {"max_repository_bytes": settings.max_repository_bytes, "max_extracted_bytes": settings.max_extracted_bytes, "max_file_bytes": settings.max_file_bytes, "max_prompt_bytes": settings.max_prompt_bytes, "max_archive_members": settings.max_archive_members, "max_concurrent_analyses": settings.max_concurrent_analyses, "max_pending_analyses": settings.max_pending_analyses}, "priority": provider_priority}
-
-@app.post("/api/settings/priority")
-async def update_priority(request: PriorityRequest):
-    try:
-        set_provider_priority(request.priority)
-    except ValueError as error:
-        raise HTTPException(400, str(error)) from error
-    return {"priority": provider_priority}
+    return {
+        "local_ai": await local_ai.get_status(),
+        "github_token": bool(settings.github_token),
+        "limits": {
+            "max_repository_bytes": settings.max_repository_bytes,
+            "max_extracted_bytes": settings.max_extracted_bytes,
+            "max_file_bytes": settings.max_file_bytes,
+            "max_prompt_bytes": settings.max_prompt_bytes,
+            "max_archive_members": settings.max_archive_members,
+            "max_concurrent_analyses": settings.max_concurrent_analyses,
+            "max_pending_analyses": settings.max_pending_analyses,
+        },
+    }
 
 app.mount("/static", StaticFiles(directory=FRONTEND_ROOT), name="static")
 app.mount("/assets", StaticFiles(directory=FRONTEND_ROOT / "assets"), name="assets")

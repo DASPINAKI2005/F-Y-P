@@ -1,20 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" role="img" aria-labelledby="logoTitle logoDesc">
-  <title id="logoTitle">GitHub Repo Analyzer logo</title>
-  <desc id="logoDesc">A repository graph with analysis nodes and the RepoAnalyzer wordmark.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#3ddcff"/>
-      <stop offset="100%" stop-color="#8b5cf6"/>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F7CFF"/>
+      <stop offset=".48" stop-color="#25D9FF"/>
+      <stop offset="1" stop-color="#FFB52E"/>
     </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#37E8FF"/>
+      <stop offset="1" stop-color="#246BFF"/>
+    </linearGradient>
+    <linearGradient id="folder" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#344A70"/>
+      <stop offset="1" stop-color="#111B31"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="12" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
   </defs>
-  <rect x="2" y="2" width="32" height="32" rx="8" fill="#0f172a" stroke="#334155"/>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M11 8V24M11 15H19" stroke="url(#g1)" stroke-width="2"/>
-    <circle cx="11" cy="8" r="2.5" fill="#0f172a" stroke="#3ddcff" stroke-width="1.8"/>
-    <circle cx="11" cy="24" r="2.5" fill="#0f172a" stroke="#6ee7b7" stroke-width="1.8"/>
-    <circle cx="19" cy="15" r="2.5" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.8"/>
-    <circle cx="24" cy="23" r="1.8" fill="#3ddcff"/>
+
+  <!-- subtle circular glow -->
+  <circle cx="512" cy="512" r="430" fill="#081426" opacity=".9"/>
+  <circle cx="512" cy="512" r="432" fill="none" stroke="url(#ring)" stroke-width="24"
+          stroke-linecap="round" stroke-dasharray="720 105 220 110" transform="rotate(-18 512 512)" filter="url(#glow)"/>
+
+  <!-- GitHub/octocat silhouette -->
+  <circle cx="500" cy="430" r="210" fill="#F5F8FF"/>
+  <path fill="#101A2C" d="M500 258c-104 0-188 84-188 188 0 83 54 153 129 178 9 2 13-4 13-9v-34c-52 11-63-25-63-25-8-22-21-28-21-28-17-12 1-12 1-12 19 1 29 20 29 20 17 29 45 21 56 16 2-13 7-21 12-26-42-5-86-21-86-93 0-21 7-38 20-51-2-5-9-26 2-53 0 0 16-5 52 19 15-4 31-6 47-6s32 2 47 6c36-24 52-19 52-19 11 27 4 48 2 53 13 13 20 30 20 51 0 72-44 88-86 93 7 6 13 18 13 36v53c0 5 3 11 13 9 75-25 129-95 129-178 0-104-84-188-188-188z"/>
+
+  <!-- repository folders -->
+  <g transform="translate(112 565)">
+    <path d="M35 55h135l30 32h190c17 0 30 13 30 30v170c0 18-14 32-32 32H32c-18 0-32-14-32-32V87c0-18 15-32 35-32z"
+          fill="url(#folder)" stroke="#6D8FC7" stroke-width="6"/>
+    <path d="M0 108h420l-12 160c-1 13-12 21-25 21H32c-17 0-29-10-31-27L0 108z" fill="#182844"/>
+    <circle cx="95" cy="190" r="23" fill="none" stroke="#F4F7FF" stroke-width="10"/>
+    <circle cx="160" cy="235" r="23" fill="none" stroke="#F4F7FF" stroke-width="10"/>
+    <circle cx="160" cy="145" r="23" fill="none" stroke="#F4F7FF" stroke-width="10"/>
+    <path d="M95 190l65-45v90" fill="none" stroke="#F4F7FF" stroke-width="10" stroke-linecap="round"/>
   </g>
-  <text x="44" y="18" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="-0.25">Repo</text>
-  <text x="44" y="31" fill="#7dd3fc" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="-0.25">Analyzer</text>
+
+  <!-- analysis panel -->
+  <g transform="translate(700 390)">
+    <rect width="230" height="350" rx="28" fill="#0D1A30" stroke="#6079A8" stroke-width="6"/>
+    <rect x="30" y="42" width="170" height="13" rx="6" fill="#7185A8"/>
+    <rect x="30" y="78" width="145" height="13" rx="6" fill="#7185A8"/>
+    <rect x="30" y="114" width="168" height="15" rx="7" fill="#24BFFF"/>
+    <rect x="30" y="153" width="95" height="13" rx="6" fill="#7185A8"/>
+    <rect x="135" y="153" width="65" height="13" rx="6" fill="#A66BFF"/>
+    <rect x="30" y="190" width="165" height="13" rx="6" fill="#7185A8"/>
+    <rect x="30" y="227" width="120" height="13" rx="6" fill="#7185A8"/>
+    <path d="M34 305L78 272l40 20 42-61 40 25" fill="none" stroke="#4B83FF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="34" cy="305" r="9" fill="#25D9FF"/>
+    <circle cx="78" cy="272" r="9" fill="#25D9FF"/>
+    <circle cx="118" cy="292" r="9" fill="#25D9FF"/>
+    <circle cx="160" cy="231" r="9" fill="#A66BFF"/>
+    <circle cx="200" cy="256" r="9" fill="#A66BFF"/>
+  </g>
+
+  <!-- magnifying glass / code analysis -->
+  <g transform="rotate(-8 620 610)">
+    <circle cx="610" cy="570" r="132" fill="#0D1D35" stroke="url(#glass)" stroke-width="22"/>
+    <circle cx="610" cy="570" r="106" fill="#102A4B" stroke="#1E6FB8" stroke-width="3"/>
+    <path d="M575 535l-42 35 42 35M645 535l42 35-42 35M625 515l-30 110"
+          fill="none" stroke="#35E6FF" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="693" y="670" width="55" height="190" rx="27" fill="url(#glass)"/>
+  </g>
 </svg>
